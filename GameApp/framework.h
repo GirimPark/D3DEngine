@@ -15,3 +15,6 @@
 #include <malloc.h>
 #include <memory.h>
 #include <tchar.h>
+
+#include "../Engine/define.h"
+#include "../Engine/Helper.h"
