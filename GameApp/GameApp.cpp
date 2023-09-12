@@ -132,15 +132,15 @@ bool GameApp::InitializeD3D()
 	swapDesc.SampleDesc.Count = 1;
 	swapDesc.SampleDesc.Quality = 0;
 
-	UINT createFlags = 0;
+	UINT creationFlags = 0;
 
 #ifdef _DEBUG
-	createFlags |= D3D11_CREATE_DEVICE_DEBUG;
+	creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 
 	// Device, DeviceContext, SwapChain 생성
-	hr = D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, createFlags, NULL, NULL,
-		D3D11_SDK_VERSION, &swapDesc, &m_pSwapChain, &m_pDevice, NULL, &m_pDeviceContext);
+	HR_T(D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, NULL,
+		D3D11_SDK_VERSION, &swapDesc, &m_pSwapChain, &m_pDevice, NULL, &m_pDeviceContext));
 
 	ID3D11Texture2D* pBackBufferTexture = nullptr;
 	HR_T(m_pSwapChain->GetBuffer(0, __uuidof(ID3D11Texture2D), (void**)&pBackBufferTexture));
@@ -194,16 +194,18 @@ bool GameApp::InitializeScene()
 	Vertex vertices[] =
 	{
 		Vertex(Vector3(-0.5f, -0.5f, 0.5f), Vector4(1.f, 0.f, 0.f, 1.f)),
-		Vertex(Vector3(0.f, 0.5f, 0.5f), Vector4(0.f, 1.f, 0.f, 1.f)),
-		Vertex(Vector3(0.5f, -0.5f, 0.5f), Vector4(0.f, 0.f, 1.f, 1.f))
+		Vertex(Vector3(-0.5f, 0.5f, 0.5f), Vector4(0.f, 1.f, 0.f, 1.f)),
+		Vertex(Vector3(0.5f, 0.5f, 0.5f), Vector4(0.f, 0.f, 1.f, 1.f)),
+
+		Vertex(Vector3(0.5f, 0.5f, 0.5f), Vector4(0.f, 0.f, 1.f, 1.f)),
+		Vertex(Vector3(0.5f, -0.5f, 0.5f), Vector4(1.f, 1.f, 1.f, 1.f)),
+		Vertex(Vector3(-0.5f, -0.5f, 0.5f), Vector4(1.f, 0.f, 0.f, 1.f))
 	};
 
 	D3D11_BUFFER_DESC vbDesc = {};
 	m_VertexCount = ARRAYSIZE(vertices);
 	vbDesc.ByteWidth = sizeof(Vertex) * m_VertexCount;
-	vbDesc.CPUAccessFlags = 0;
 	vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-	vbDesc.MiscFlags = 0;
 	vbDesc.Usage = D3D11_USAGE_DEFAULT;
 
 	// 정점 버퍼 생성
@@ -218,20 +220,14 @@ bool GameApp::InitializeScene()
 
 	// 2. Render() 에서 파이프라인에 바인딩할 InputLayout 생성
 	// 인풋 레이아웃은 버텍스 쉐이더가 입력받을 데이터의 형식을 지정한다.
+	ID3DBlob* vertexShaderBuffer = nullptr;
+	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_4_0", &vertexShaderBuffer));
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,0,D3D11_INPUT_PER_VERTEX_DATA, 0}, 
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,0,D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 
-	ID3DBlob* vertexShaderBuffer = nullptr;
-	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_4_0", &vertexShaderBuffer));
-	if(FAILED(hr))
-	{
-		MessageBoxA(m_hWnd, static_cast<char*>(errorMessage->GetBufferPointer()), "오류.", MB_OK);
-		SAFE_RELEASE(errorMessage);
-		return false;
-	}
 	HR_T(hr = m_pDevice->CreateInputLayout(layout, ARRAYSIZE(layout),
 		vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), &m_pInputLayout));
 
@@ -245,12 +241,6 @@ bool GameApp::InitializeScene()
 	// 4. Render에서 파이프라인에 바인딩할 픽셀 셰이더 생성
 	ID3DBlob* pixelShaderBuffer = nullptr;
 	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_4_0", &pixelShaderBuffer));
-	if(FAILED(hr))
-	{
-		MessageBoxA(m_hWnd, static_cast<char*>(errorMessage->GetBufferPointer()), "오류.", MB_OK);
-		SAFE_RELEASE(errorMessage);
-		return false;
-	}
 	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
 	pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
 	SAFE_RELEASE(pixelShaderBuffer);
