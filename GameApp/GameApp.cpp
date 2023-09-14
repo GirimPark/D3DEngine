@@ -90,7 +90,7 @@ void GameApp::Update()
 	angle += 0.002f;
 
 	// Sun
-	m_WorldSun = (Matrix)XMMatrixRotationY(angle) * m_WorldSun;
+	m_WorldSun = XMMatrixRotationY(angle);
 
 	// Earth
 	XMMATRIX spinE = XMMatrixRotationY(angle * 2.f);
