@@ -30,11 +30,8 @@ public:
 	UINT m_VertexBufferOffset = 0;					// 버텍스 버퍼의 오프셋
 	UINT m_VertexCount = 0;							// 버텍스 개수
 	ID3D11Buffer* m_pIndexBuffer = nullptr;			// 인덱스 버퍼
-	int m_nIndices = 0;								// 인덱스 개수
+	INT m_nIndices = 0;								// 인덱스 개수
 	ID3D11Buffer* m_pConstantBuffer = nullptr;		// 상수 버퍼
-
-	// ImGUI Test
-	Vector4 m_ClearColor;
 
 	// 상수 버퍼를 통해 전달할 변환 정보
 	Matrix m_WorldSun;
@@ -42,7 +39,14 @@ public:
 	Matrix m_WorldMoon;
 	Matrix m_View;
 	Matrix m_Projection;
-
+	// ImGUI와 연결할 정보
+	Vector3 m_TranslateSun = { 0.f, 0.f, 0.f };
+	Vector3 m_TranslateEarth = { -3.f, 0.f, 0.f };
+	Vector3 m_TranslateMoon = { -5.f, 0.f, 0.f };
+	Vector3 m_TranslateCamera = { 0.f, 1.f, -15.f };
+	FLOAT m_FOV = 45.f;	// XM_PIDIV4
+	FLOAT m_NearZ = 0.01f;
+	FLOAT m_FarZ = 100.f;
 	
 	bool Initialize() final;
 	void Update() final;

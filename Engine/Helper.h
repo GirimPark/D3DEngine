@@ -4,6 +4,8 @@
 #include <exception>
 #include <stdio.h>
 
+#define PI (3.14159265359)
+
 #define LOG_ERROR(...) \
 { \
 	wchar_t buffer[256]; \
@@ -56,6 +58,11 @@ void SAFE_DELETE(T* p)
 		delete p;
 		p = nullptr;
 	}
+}
+
+inline float DEGREE_TO_RADIAN(float degree)
+{
+	return (degree * (PI / 180));
 }
 
 

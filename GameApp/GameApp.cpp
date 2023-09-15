@@ -90,21 +90,31 @@ void GameApp::Update()
 	angle += 0.002f;
 
 	// Sun
-	m_WorldSun = XMMatrixRotationY(angle);
+	XMMATRIX spinS = XMMatrixRotationY(angle);
+	XMMATRIX translateS = XMMatrixTranslation(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z);
+	m_WorldSun = spinS * translateS;
 
 	// Earth
 	XMMATRIX spinE = XMMatrixRotationY(angle * 2.f);
 	XMMATRIX orbitE = m_WorldSun;
-	XMMATRIX translateE = XMMatrixTranslation(-3.f, 0.f, 0.f);
+	XMMATRIX translateE = XMMatrixTranslation(m_TranslateEarth.x, m_TranslateEarth.y, m_TranslateEarth.z);
 	XMMATRIX scaleE = XMMatrixScaling(0.3f, 0.3f, 0.3f);
 	m_WorldEarth = scaleE * spinE * translateE * orbitE;
 
 	// Moon
 	XMMATRIX spinM = XMMatrixRotationY(angle * 4.f);
 	XMMATRIX orbitM = m_WorldEarth;
-	XMMATRIX translateM = XMMatrixTranslation(-5.f, 0.f, 0.f);
+	XMMATRIX translateM = XMMatrixTranslation(m_TranslateMoon.x, m_TranslateMoon.y, m_TranslateMoon.z);
 	XMMATRIX scaleM = XMMatrixScaling(0.4f, 0.4f, 0.4f);
 	m_WorldMoon = scaleM * spinM * translateM * orbitM;
+
+	// Camera
+	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
+	XMVECTOR At = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	m_View = XMMatrixLookAtLH(Eye, At, Up);
+
+	m_Projection = XMMatrixPerspectiveFovLH(DEGREE_TO_RADIAN(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
 	__super::Update();
 }
@@ -117,13 +127,15 @@ void GameApp::Render()
 	ImGui::NewFrame();
 
 	{
-		ImGui::Begin("Edit Sun's Transform");
-		float* translateSun[3] = { &m_WorldSun._41, &m_WorldSun._42, &m_WorldSun._43 };
-		//ImGui::SliderFloat3("Sun", *translateSun, 0.f, 5.f);
-		ImGui::SliderFloat("Sun_x", translateSun[0], -5.f, 5.f);
-		/*ImGui::InputFloat("SunX", (float*)&m_WorldSun._41);
-		ImGui::InputFloat("SunY", (float*)&m_WorldSun._42);
-		ImGui::InputFloat("SunZ", (float*)&m_WorldSun._43);*/
+		ImGui::Begin("Edit Transform");
+		ImGui::SliderFloat3("Sun", (float*)&m_TranslateSun, -50.f, 50.f);
+		ImGui::SliderFloat3("Earth", (float*)&m_TranslateEarth, -50.f, 50.f);
+		ImGui::SliderFloat3("Moon", (float*)&m_TranslateMoon, -50.f, 50.f);
+		ImGui::SliderFloat3("Camera", (float*)&m_TranslateCamera, -50.f, 50.f);
+		ImGui::SliderFloat("FOV", &m_FOV, 0.1f, 180.f);
+		ImGui::SliderFloat("Near", &m_NearZ, 0.01f, 100.f);
+		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 1000.f);
+
 		ImGui::End();
 	}
 
@@ -193,6 +205,7 @@ bool GameApp::InitializeD3D()
 	// 결과값
 	HRESULT hr = 0;
 
+
 	/// 1. 스왑체인 속성 설정 구조체 생성
 	// https://learn.microsoft.com/ko-kr/windows/win32/api/dxgi/ns-dxgi-dxgi_swap_chain_desc
 	DXGI_SWAP_CHAIN_DESC swapDesc = {};
@@ -215,23 +228,24 @@ bool GameApp::InitializeD3D()
 	swapDesc.BufferDesc.Format = DXGI_FORMAT_R8G8B8A8_UNORM;
 
 	// 다중 샘플링 매개 변수 설정
-	swapDesc.SampleDesc.Count = 1;
-	swapDesc.SampleDesc.Quality = 0;
+	swapDesc.SampleDesc.Count = 1;		// 다중 샘플링 하지 않음
+	swapDesc.SampleDesc.Quality = 0;	// 다중 샘플링 하지 않음
 
 	swapDesc.BufferUsage = DXGI_USAGE_RENDER_TARGET_OUTPUT;
 	swapDesc.OutputWindow = m_hWnd;
 	swapDesc.Windowed = true;
 
-	UINT creationFlags = 0;
 
+	/// 2. Device, DeviceContext, SwapChain 생성
+	// https://learn.microsoft.com/ko-kr/windows/win32/api/d3d11/nf-d3d11-d3d11createdeviceandswapchain
+	UINT creationFlags = 0;
 #ifdef _DEBUG
 	creationFlags |= D3D11_CREATE_DEVICE_DEBUG;
 #endif
 	
-	/// 2. Device, DeviceContext, SwapChain 생성
-	// https://learn.microsoft.com/ko-kr/windows/win32/api/d3d11/nf-d3d11-d3d11createdeviceandswapchain
 	HR_T(D3D11CreateDeviceAndSwapChain(NULL, D3D_DRIVER_TYPE_HARDWARE, NULL, creationFlags, NULL, NULL,
 		D3D11_SDK_VERSION, &swapDesc, &m_pSwapChain, &m_pDevice, NULL, &m_pDeviceContext));
+
 
 	/// 3. RenderTargetView 생성
 	// https://learn.microsoft.com/ko-kr/windows/win32/api/d3d11/nf-d3d11-id3d11device-createrendertargetview
@@ -245,6 +259,7 @@ bool GameApp::InitializeD3D()
 	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, NULL);
 #endif
 
+
 	/// 4. 뷰포트 설정
 	D3D11_VIEWPORT viewport = {};
 	viewport.TopLeftX = 0;
@@ -254,6 +269,7 @@ bool GameApp::InitializeD3D()
 	viewport.MinDepth = 0.f;
 	viewport.MaxDepth = 1.f;
 	m_pDeviceContext->RSSetViewports(1, &viewport);
+
 
 	/// 5. Depth&Stencil View 생성
 	D3D11_TEXTURE2D_DESC depthDesc = {};
@@ -388,12 +404,12 @@ bool GameApp::InitializeScene()
 	// 쉐이더에 전달할 데이터 설정
 	m_WorldSun = XMMatrixIdentity();
 
-	XMVECTOR Eye = XMVectorSet(0.f, 1.f, -5.f, 0.f);
+	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
 	XMVECTOR At = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 	m_View = XMMatrixLookAtLH(Eye, At, Up);
 
-	m_Projection = XMMatrixPerspectiveFovLH(XM_PIDIV2, ScreenWidth / static_cast<FLOAT>(ScreenHeight), 0.01f, 100.f);
+	m_Projection = XMMatrixPerspectiveFovLH(m_FOV, ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
 	return true;
 }
