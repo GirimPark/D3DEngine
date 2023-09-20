@@ -349,14 +349,38 @@ bool GameApp::InitializeScene()
 
 	Vertex vertices[] =
 	{
-		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f)},
-		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		// +X
+		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.0f, -1.0f, 1.0f),	Vector4(1.0f, 1.0f, 1.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.0f, -1.0f, -1.0f),	Vector4(1.0f, 1.0f, 0.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
+		// -X
+		{ Vector3(-1.0f, 1.0f, 1.0f),	Vector4(1.0f, 0.0f, 0.0f, 1.0f), Vector3(-1.f, 0.f, 0.f) },
+		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(-1.f, 0.f, 0.f)},
+		{ Vector3(-1.0f, -1.0f, -1.0f), Vector4(1.0f, 0.0f, 1.0f, 1.0f), Vector3(-1.f, 0.f, 0.f) },
+		{ Vector3(-1.0f, -1.0f, 1.0f),	Vector4(0.0f, 0.0f, 0.0f, 1.0f), Vector3(-1.f, 0.f, 0.f) },
+
+		// +Y
 		{ Vector3(-1.0f, 1.0f, 1.0f),	Vector4(1.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f)},
+		// -Y
 		{ Vector3(-1.0f, -1.0f, -1.0f), Vector4(1.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
 		{ Vector3(1.0f, -1.0f, -1.0f),	Vector4(1.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
 		{ Vector3(1.0f, -1.0f, 1.0f),	Vector4(1.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
 		{ Vector3(-1.0f, -1.0f, 1.0f),	Vector4(0.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
+
+		// +Z
+		{ Vector3(-1.0f, -1.0f, 1.0f),	Vector4(0.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
+		{ Vector3(1.0f, -1.0f, 1.0f),	Vector4(1.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
+		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		{ Vector3(-1.0f, 1.0f, 1.0f),	Vector4(1.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		// -Z
+		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f)},
+		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
+		{ Vector3(1.0f, -1.0f, -1.0f),	Vector4(1.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
+		{ Vector3(-1.0f, -1.0f, -1.0f), Vector4(1.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
 	};
 
 	m_VertexCount = ARRAYSIZE(vertices);
@@ -402,12 +426,12 @@ bool GameApp::InitializeScene()
 	/// 4. Render()에서 파이프라인에 바인딩할 인덱스 버퍼 생성
 	WORD indices[] =
 	{
-		0,5,4, 0,1,5,
-		1,6,5, 1,2,6,
-		2,7,6, 2,3,7,
-		3,4,7, 3,0,4,
-		3,1,0, 3,2,1,
-		5,7,4, 5,6,7
+		0,1,2,	0,2,3,
+		4,5,6,	4,6,7,
+		8,9,10,	8,10,11,
+		12,13,14,	12,14,15,
+		16,17,18,	16,18,19,
+		20,21,22,	20,21,23
 	};
 
 	// 인덱스 개수 저장
