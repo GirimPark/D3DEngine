@@ -31,14 +31,20 @@ public:
 	UINT m_VertexCount = 0;							// 버텍스 개수
 	ID3D11Buffer* m_pIndexBuffer = nullptr;			// 인덱스 버퍼
 	INT m_nIndices = 0;								// 인덱스 개수
-	ID3D11Buffer* m_pConstantBuffer = nullptr;		// 상수 버퍼
+	ID3D11Buffer* m_pTransformConstantBuffer = nullptr;		// 위치 상수 버퍼
+	ID3D11Buffer* m_pLightingConstantBuffer = nullptr;	// 조명 상수 버퍼
 
 	// 상수 버퍼를 통해 전달할 변환 정보
+	// 위치 상수 버퍼
 	Matrix m_WorldSun;
 	Matrix m_WorldEarth;
 	Matrix m_WorldMoon;
 	Matrix m_View;
 	Matrix m_Projection;
+	// 조명 상수 버퍼
+	Vector4 m_LightDirection = {0.f, 1.f, 0.f, 1.f};
+	Vector4 m_LightColor = { 0.f, 1.f, 1.f, 1.f };
+	FLOAT m_LightIntensity = 100.f;
 	// ImGUI와 연결할 정보
 	Vector3 m_TranslateSun = { 0.f, 0.f, 0.f };
 	Vector3 m_TranslateEarth = { -3.f, 0.f, 0.f };
