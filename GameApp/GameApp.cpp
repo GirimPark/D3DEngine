@@ -2,6 +2,7 @@
 #include "GameApp.h"
 
 #include <directxtk/SimpleMath.h>
+#include <directxtk/DDSTextureLoader.h>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
@@ -40,11 +41,11 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 struct Vertex
 {
 	Vector3 position;
-	Vector4 color;
+	Vector2 texture;
 	Vector3 normal;
 
-	Vertex(Vector3 position, Vector4 color, Vector3 normal)
-		: position(position), color(color), normal(normal) { }
+	Vertex(Vector3 position, Vector3 normal, Vector2 texture)
+		: position(position), texture(texture), normal(normal) { }
 };
 
 struct TransformConstantBuffer
@@ -58,10 +59,6 @@ struct LightingConstantBuffer
 {
 	Vector4 mLightDirection;
 	Vector4 mLightColor;
-	FLOAT mLightIntensity;
-	FLOAT mGarbage1;
-	FLOAT mGarbage2;
-	FLOAT mGarbage3;
 };
 
 
@@ -99,30 +96,30 @@ void GameApp::Update()
 	static float angle = 0.f;
 	angle += 0.002f;
 
-	// Sun
-	XMMATRIX spinS = XMMatrixRotationY(angle);
-	XMMATRIX translateS = XMMatrixTranslation(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z);
-	m_WorldSun = spinS * translateS;
+	//// Sun
+	//XMMATRIX spinS = XMMatrixRotationY(angle);
+	//XMMATRIX translateS = XMMatrixTranslation(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z);
+	//m_WorldSun = spinS * translateS;
 
-	// Earth
-	XMMATRIX spinE = XMMatrixRotationY(angle * 2.f);
-	XMMATRIX orbitE = m_WorldSun;
-	XMMATRIX translateE = XMMatrixTranslation(m_TranslateEarth.x, m_TranslateEarth.y, m_TranslateEarth.z);
-	XMMATRIX scaleE = XMMatrixScaling(0.3f, 0.3f, 0.3f);
-	m_WorldEarth = scaleE * spinE * translateE * orbitE;
+	//// Earth
+	//XMMATRIX spinE = XMMatrixRotationY(angle * 2.f);
+	//XMMATRIX orbitE = m_WorldSun;
+	//XMMATRIX translateE = XMMatrixTranslation(m_TranslateEarth.x, m_TranslateEarth.y, m_TranslateEarth.z);
+	//XMMATRIX scaleE = XMMatrixScaling(0.3f, 0.3f, 0.3f);
+	//m_WorldEarth = scaleE * spinE * translateE * orbitE;
 
-	// Moon
-	XMMATRIX spinM = XMMatrixRotationY(angle * 4.f);
-	XMMATRIX orbitM = m_WorldEarth;
-	XMMATRIX translateM = XMMatrixTranslation(m_TranslateMoon.x, m_TranslateMoon.y, m_TranslateMoon.z);
-	XMMATRIX scaleM = XMMatrixScaling(0.4f, 0.4f, 0.4f);
-	m_WorldMoon = scaleM * spinM * translateM * orbitM;
+	//// Moon
+	//XMMATRIX spinM = XMMatrixRotationY(angle * 4.f);
+	//XMMATRIX orbitM = m_WorldEarth;
+	//XMMATRIX translateM = XMMatrixTranslation(m_TranslateMoon.x, m_TranslateMoon.y, m_TranslateMoon.z);
+	//XMMATRIX scaleM = XMMatrixScaling(0.4f, 0.4f, 0.4f);
+	//m_WorldMoon = scaleE * spinM * translateM * orbitM;
 
 	// Camera
 	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
 	XMVECTOR At = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z + 1.f, 0.f);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
-	m_View = XMMatrixLookAtLH(Eye, At, Up);
+	m_View = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(m_YAW)), XMMatrixLookAtLH(Eye, At, Up));
 
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
@@ -146,6 +143,7 @@ void GameApp::Render()
 		ImGui::SliderFloat("FOV", &m_FOV, 0.1f, 180.f);
 		ImGui::SliderFloat("Near", &m_NearZ, 0.01f, 100.f);
 		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 1000.f);
+		ImGui::SliderFloat("CameraRotation", &m_YAW, -360.f, 360.f);
 
 		ImGui::End();
 	}
@@ -153,7 +151,8 @@ void GameApp::Render()
 	{
 		ImGui::Begin("Edit Lighting");
 
-		ImGui::SliderFloat3("Light", (float*)&m_LightDirection, -180.f, 180.f);
+		ImGui::SliderFloat3("Direction", (float*)&m_LightDirection, 1.f, -1.f);
+		ImGui::SliderFloat3("Color", (float*)&m_LightColor, 0.f, 1.f);
 
 		ImGui::End();
 	}
@@ -178,6 +177,15 @@ void GameApp::Render()
 	m_pDeviceContext->PSSetConstantBuffers(1, 1, &m_pLightingConstantBuffer);
 	m_pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
 	m_pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
+	m_pDeviceContext->PSSetShaderResources(0, 1, &m_pTextureRV);
+	m_pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
+
+
+	/// LightingConstantBuffer
+	LightingConstantBuffer LCB;
+	LCB.mLightDirection = m_LightDirection;
+	LCB.mLightColor = m_LightColor;
+	m_pDeviceContext->UpdateSubresource(m_pLightingConstantBuffer, 0, nullptr, &LCB, 0, 0);
 
 	/// TransformConstantBuffer
 	// Sun : Update Variables
@@ -189,33 +197,24 @@ void GameApp::Render()
 	// Render
 	m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
 
-	// Earth : Update Variables
-	TransformConstantBuffer TCBEarth;
-	TCBEarth.mWorld = XMMatrixTranspose(m_WorldEarth);
-	TCBEarth.mView = XMMatrixTranspose(m_View);
-	TCBEarth.mProjection = XMMatrixTranspose(m_Projection);
-	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBEarth, 0, 0);
-	// Render
-	m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
+	//// Earth : Update Variables
+	//TransformConstantBuffer TCBEarth;
+	//TCBEarth.mWorld = XMMatrixTranspose(m_WorldEarth);
+	//TCBEarth.mView = XMMatrixTranspose(m_View);
+	//TCBEarth.mProjection = XMMatrixTranspose(m_Projection);
+	//m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBEarth, 0, 0);
+	//// Render
+	//m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
 
-	// Earth : Update Variables
-	TransformConstantBuffer TCBMoon;
-	TCBMoon.mWorld = XMMatrixTranspose(m_WorldMoon);
-	TCBMoon.mView = XMMatrixTranspose(m_View);
-	TCBMoon.mProjection = XMMatrixTranspose(m_Projection);
-	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBMoon, 0, 0);
-	// Render
-	m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
+	//// Earth : Update Variables
+	//TransformConstantBuffer TCBMoon;
+	//TCBMoon.mWorld = XMMatrixTranspose(m_WorldMoon);
+	//TCBMoon.mView = XMMatrixTranspose(m_View);
+	//TCBMoon.mProjection = XMMatrixTranspose(m_Projection);
+	//m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBMoon, 0, 0);
+	//// Render
+	//m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
 
-
-	/// LightingConstantBuffer
-	LightingConstantBuffer LCB;
-	//m_LightDirection.Normalize();
-	LCB.mLightDirection = m_LightDirection;
-	LCB.mLightColor = m_LightColor;
-	LCB.mLightIntensity = m_LightIntensity;
-	m_pDeviceContext->UpdateSubresource(m_pLightingConstantBuffer, 0, nullptr, &LCB, 0, 0);
-	
 
 	/// ImGUI
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
@@ -350,38 +349,44 @@ bool GameApp::InitializeScene()
 	Vertex vertices[] =
 	{
 		// +X
-		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.0f, -1.0f, 1.0f),	Vector4(1.0f, 1.0f, 1.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.0f, -1.0f, -1.0f),	Vector4(1.0f, 1.0f, 0.0f, 1.0f), Vector3(1.f, 0.f, 0.f) },
-		// -X
-		{ Vector3(-1.0f, 1.0f, 1.0f),	Vector4(1.0f, 0.0f, 0.0f, 1.0f), Vector3(-1.f, 0.f, 0.f) },
-		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(-1.f, 0.f, 0.f)},
-		{ Vector3(-1.0f, -1.0f, -1.0f), Vector4(1.0f, 0.0f, 1.0f, 1.0f), Vector3(-1.f, 0.f, 0.f) },
-		{ Vector3(-1.0f, -1.0f, 1.0f),	Vector4(0.0f, 0.0f, 0.0f, 1.0f), Vector3(-1.f, 0.f, 0.f) },
-
-		// +Y
-		{ Vector3(-1.0f, 1.0f, 1.0f),	Vector4(1.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f)},
-		// -Y
-		{ Vector3(-1.0f, -1.0f, -1.0f), Vector4(1.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-		{ Vector3(1.0f, -1.0f, -1.0f),	Vector4(1.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-		{ Vector3(1.0f, -1.0f, 1.0f),	Vector4(1.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-		{ Vector3(-1.0f, -1.0f, 1.0f),	Vector4(0.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-
-		// +Z
-		{ Vector3(-1.0f, -1.0f, 1.0f),	Vector4(0.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-		{ Vector3(1.0f, -1.0f, 1.0f),	Vector4(1.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-		{ Vector3(1.0f, 1.0f, 1.0f),	Vector4(0.0f, 1.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		{ Vector3(-1.0f, 1.0f, 1.0f),	Vector4(1.0f, 0.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		// -Z
-		{ Vector3(-1.0f, 1.0f, -1.0f),	Vector4(0.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, 1.f, 0.f)},
-		{ Vector3(1.0f, 1.0f, -1.0f),	Vector4(0.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, 1.f, 0.f) },
-		{ Vector3(1.0f, -1.0f, -1.0f),	Vector4(1.0f, 1.0f, 0.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
-		{ Vector3(-1.0f, -1.0f, -1.0f), Vector4(1.0f, 0.0f, 1.0f, 1.0f), Vector3(0.f, -1.f, 0.f) },
+		{ Vector3(1.f, 1.f, -1.f),  Vector3(1.f, 0.f, 0.f), Vector2(0.f, 0.f) },
+		{ Vector3(1.f, 1.f, 1.f),   Vector3(1.f, 0.f, 0.f), Vector2(1.f, 0.f) },
+		{ Vector3(1.f, -1.f, 1.f),  Vector3(1.f, 0.f, 0.f), Vector2(1.f, 1.f) },
+		{ Vector3(1.f, -1.f, -1.f), Vector3(1.f, 0.f, 0.f), Vector2(0.f, 1.f) },
+		// -X															  
+		{ Vector3(-1.f, 1.f, 1.f),   Vector3(-1.f, 0.f, 0.f), Vector2(0.f, 0.f) },
+		{ Vector3(-1.f, 1.f, -1.f),	 Vector3(-1.f, 0.f, 0.f), Vector2(1.f, 0.f) },
+		{ Vector3(-1.f, -1.f, -1.f), Vector3(-1.f, 0.f, 0.f), Vector2(1.f, 1.f) },
+		{ Vector3(-1.f, -1.f, 1.f),  Vector3(-1.f, 0.f, 0.f), Vector2(0.f, 1.f) },
+																		  
+		// +Y															  
+		{ Vector3(-1.f, 1.f, 1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(0.f, 0.f) },
+		{ Vector3(1.f, 1.f, 1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(1.f, 0.f) },
+		{ Vector3(1.f, 1.f, -1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(1.f, 1.f) },
+		{ Vector3(-1.f, 1.f, -1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(0.f, 1.f) },
+		// -Y															  
+		{ Vector3(-1.f, -1.f, -1.f), Vector3(0.f, -1.f, 0.f), Vector2(0.f, 0.f) },
+		{ Vector3(1.f, -1.f, -1.f),	 Vector3(0.f, -1.f, 0.f), Vector2(1.f, 0.f) },
+		{ Vector3(1.f, -1.f, 1.f),	 Vector3(0.f, -1.f, 0.f), Vector2(1.f, 1.f) },
+		{ Vector3(-1.f, -1.f, 1.f),	 Vector3(0.f, -1.f, 0.f), Vector2(0.f, 1.f) },
+																		  
+		// +Z															  
+		{ Vector3(-1.f, -1.f, 1.f), Vector3(0.f, 0.f, 1.f), Vector2(0.f, 0.f) },
+		{ Vector3(1.f, -1.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector2(1.f, 0.f) },
+		{ Vector3(1.f, 1.f, 1.f),   Vector3(0.f, 0.f, 1.f), Vector2(1.f, 1.f) },
+		{ Vector3(-1.f, 1.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector2(0.f, 1.f) },
+		// -Z															  
+		{ Vector3(-1.f, 1.f, -1.f),  Vector3(0.f, 0.f, -1.f), Vector2(0.f, 0.f) },
+		{ Vector3(1.f, 1.f, -1.f),	 Vector3(0.f, 0.f, -1.f), Vector2(1.f, 0.f) },
+		{ Vector3(1.f, -1.f, -1.f),  Vector3(0.f, 0.f, -1.f), Vector2(1.f, 1.f) },
+		{ Vector3(-1.f, -1.f, -1.f), Vector3(0.f, 0.f, -1.f), Vector2(0.f, 1.f) }
 	};
+
+	//for(auto& v : vertices)
+	//{
+	//	v.normal = v.position;
+	//	v.normal.Normalize();
+	//}
 
 	m_VertexCount = ARRAYSIZE(vertices);
 
@@ -407,7 +412,7 @@ bool GameApp::InitializeScene()
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"COLOR", 0, DXGI_FORMAT_R32G32B32A32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0},
 		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 	ID3DBlob* vertexShaderBuffer = nullptr; // 컴파일된 코드에 액세스할 포인터 변수
@@ -431,7 +436,7 @@ bool GameApp::InitializeScene()
 		8,9,10,	8,10,11,
 		12,13,14,	12,14,15,
 		16,17,18,	16,18,19,
-		20,21,22,	20,21,23
+		20,21,22,	20,22,23
 	};
 
 	// 인덱스 개수 저장
@@ -485,6 +490,20 @@ bool GameApp::InitializeScene()
 	HR_T(m_pDevice->CreateBuffer(&LCBDesc, nullptr, &m_pLightingConstantBuffer));
 
 
+	/// 7. 텍스처 로드 & sample state 생성
+	HR_T(CreateDDSTextureFromFile(m_pDevice, L"seafloor.dds", nullptr, &m_pTextureRV));
+
+	D3D11_SAMPLER_DESC sampleDesc = {};
+	sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
+	sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampleDesc.AddressW = D3D11_TEXTURE_ADDRESS_WRAP;
+	sampleDesc.ComparisonFunc = D3D11_COMPARISON_NEVER;
+	sampleDesc.MinLOD = 0;
+	sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
+	HR_T(m_pDevice->CreateSamplerState(&sampleDesc, &m_pSamplerLinear));
+
+
 	return true;
 }
 
@@ -498,6 +517,8 @@ void GameApp::FinalizeScene()
 	SAFE_RELEASE(m_pLightingConstantBuffer);
 	SAFE_RELEASE(m_pPixelShader);
 	SAFE_RELEASE(m_pDepthStencilView);
+	SAFE_RELEASE(m_pTextureRV);
+	SAFE_RELEASE(m_pSamplerLinear);
 }
 
 bool GameApp::InitializeImGUI()
