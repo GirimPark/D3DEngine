@@ -3,6 +3,7 @@
 
 #include <directxtk/SimpleMath.h>
 #include <directxtk/DDSTextureLoader.h>
+#include <directxtk/WICTextureLoader.h>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
@@ -43,9 +44,10 @@ struct Vertex
 	Vector3 position;
 	Vector2 texture;
 	Vector3 normal;
+	Vector3 tangent;
 
-	Vertex(Vector3 position, Vector3 normal, Vector2 texture)
-		: position(position), texture(texture), normal(normal) { }
+	Vertex(Vector3 position, Vector2 texture, Vector3 normal, Vector3 tangent)
+		: position(position), texture(texture), normal(normal), tangent(tangent) { }
 };
 
 struct TransformConstantBuffer
@@ -59,6 +61,12 @@ struct LightingConstantBuffer
 {
 	Vector4 mLightDirection;
 	Vector4 mLightColor;
+	Vector3 mCameraTranslation;
+	FLOAT mLightIntensity;
+	FLOAT mAmbientPower;
+	FLOAT mSpecularPower;
+	FLOAT garbage1;
+	FLOAT garbage2;
 };
 
 
@@ -97,9 +105,11 @@ void GameApp::Update()
 	angle += 0.002f;
 
 	//// Sun
-	//XMMATRIX spinS = XMMatrixRotationY(angle);
-	//XMMATRIX translateS = XMMatrixTranslation(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z);
-	//m_WorldSun = spinS * translateS;
+	XMMATRIX spinS = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_CubePitch), XMConvertToRadians(m_CubeYAW), 0.f);
+	XMMATRIX scaleS = XMMatrixScaling(100.f, 100.f, 100.f);
+	XMMATRIX translateS = XMMatrixTranslation(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z);
+	m_WorldSun = scaleS * spinS * translateS;
+	//m_WorldSun = XMMatrixMultiply(scaleS, spinS);
 
 	//// Earth
 	//XMMATRIX spinE = XMMatrixRotationY(angle * 2.f);
@@ -117,10 +127,11 @@ void GameApp::Update()
 
 	// Camera
 	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
-	XMVECTOR At = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z + 1.f, 0.f);
+	XMVECTOR At = XMVectorSet(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z, 0.f);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
-	m_View = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(m_YAW)), XMMatrixLookAtLH(Eye, At, Up));
-
+	m_View = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)), XMMatrixLookAtLH(Eye, At, Up));
+	m_TranslateCamera = m_View.Translation();
+	
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
 	__super::Update();
@@ -136,14 +147,16 @@ void GameApp::Render()
 	{
 		ImGui::Begin("Edit Transform");
 
-		ImGui::SliderFloat3("Sun", (float*)&m_TranslateSun, -50.f, 50.f);
+		ImGui::SliderFloat3("Sun", (float*)&m_TranslateSun, -500.f, 500.f);
 		ImGui::SliderFloat3("Earth", (float*)&m_TranslateEarth, -50.f, 50.f);
 		ImGui::SliderFloat3("Moon", (float*)&m_TranslateMoon, -50.f, 50.f);
-		ImGui::SliderFloat3("Camera", (float*)&m_TranslateCamera, -50.f, 50.f);
+		ImGui::SliderFloat3("Camera", (float*)&m_TranslateCamera, -1500.f, 1500.f);
 		ImGui::SliderFloat("FOV", &m_FOV, 0.1f, 180.f);
 		ImGui::SliderFloat("Near", &m_NearZ, 0.01f, 100.f);
-		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 1000.f);
-		ImGui::SliderFloat("CameraRotation", &m_YAW, -360.f, 360.f);
+		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 10000.f);
+		ImGui::SliderFloat("CameraYAW", &m_CameraRotation, -360.f, 360.f);
+		ImGui::SliderFloat("CubeYAW", &m_CubeYAW, -360.f, 360.f);
+		ImGui::SliderFloat("CubePitch", &m_CubePitch, -360.f, 360.f);
 
 		ImGui::End();
 	}
@@ -153,7 +166,9 @@ void GameApp::Render()
 
 		ImGui::SliderFloat3("Direction", (float*)&m_LightDirection, 1.f, -1.f);
 		ImGui::SliderFloat3("Color", (float*)&m_LightColor, 0.f, 1.f);
-
+		ImGui::SliderFloat("Intensity", &m_LightIntensity, 0.f, 10.f);
+		ImGui::SliderFloat("AmbientPower", &m_AmbientPower, 0.f, 10.f);
+		ImGui::SliderFloat("SpecularPower", &m_SpecularPower, 0.f, 10000.f);
 		ImGui::End();
 	}
 
@@ -164,7 +179,7 @@ void GameApp::Render()
 #endif
 
 	// 화면, Depth Buffer 초기화
-	DirectX::SimpleMath::Color color(0.f, 0.5f, 0.5f, 1.0f);
+	DirectX::SimpleMath::Color color(0.f, 0.f, 0.f, 1.f);
 	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
 	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.f, 0);
 
@@ -178,6 +193,8 @@ void GameApp::Render()
 	m_pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
 	m_pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
 	m_pDeviceContext->PSSetShaderResources(0, 1, &m_pTextureRV);
+	m_pDeviceContext->PSSetShaderResources(1, 1, &m_pNormalRV);
+	m_pDeviceContext->PSSetShaderResources(2, 1, &m_pSpecularRV);
 	m_pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
 
 
@@ -185,6 +202,10 @@ void GameApp::Render()
 	LightingConstantBuffer LCB;
 	LCB.mLightDirection = m_LightDirection;
 	LCB.mLightColor = m_LightColor;
+	LCB.mCameraTranslation = m_TranslateCamera;
+	LCB.mLightIntensity = m_LightIntensity;
+	LCB.mAmbientPower = m_AmbientPower;
+	LCB.mSpecularPower = m_SpecularPower;
 	m_pDeviceContext->UpdateSubresource(m_pLightingConstantBuffer, 0, nullptr, &LCB, 0, 0);
 
 	/// TransformConstantBuffer
@@ -349,37 +370,37 @@ bool GameApp::InitializeScene()
 	Vertex vertices[] =
 	{
 		// +X
-		{ Vector3(1.f, 1.f, -1.f),  Vector3(1.f, 0.f, 0.f), Vector2(0.f, 0.f) },
-		{ Vector3(1.f, 1.f, 1.f),   Vector3(1.f, 0.f, 0.f), Vector2(1.f, 0.f) },
-		{ Vector3(1.f, -1.f, 1.f),  Vector3(1.f, 0.f, 0.f), Vector2(1.f, 1.f) },
-		{ Vector3(1.f, -1.f, -1.f), Vector3(1.f, 0.f, 0.f), Vector2(0.f, 1.f) },
-		// -X															  
-		{ Vector3(-1.f, 1.f, 1.f),   Vector3(-1.f, 0.f, 0.f), Vector2(0.f, 0.f) },
-		{ Vector3(-1.f, 1.f, -1.f),	 Vector3(-1.f, 0.f, 0.f), Vector2(1.f, 0.f) },
-		{ Vector3(-1.f, -1.f, -1.f), Vector3(-1.f, 0.f, 0.f), Vector2(1.f, 1.f) },
-		{ Vector3(-1.f, -1.f, 1.f),  Vector3(-1.f, 0.f, 0.f), Vector2(0.f, 1.f) },
-																		  
-		// +Y															  
-		{ Vector3(-1.f, 1.f, 1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(0.f, 0.f) },
-		{ Vector3(1.f, 1.f, 1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(1.f, 0.f) },
-		{ Vector3(1.f, 1.f, -1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(1.f, 1.f) },
-		{ Vector3(-1.f, 1.f, -1.f),	 Vector3(0.f, 1.f, 0.f), Vector2(0.f, 1.f) },
-		// -Y															  
-		{ Vector3(-1.f, -1.f, -1.f), Vector3(0.f, -1.f, 0.f), Vector2(0.f, 0.f) },
-		{ Vector3(1.f, -1.f, -1.f),	 Vector3(0.f, -1.f, 0.f), Vector2(1.f, 0.f) },
-		{ Vector3(1.f, -1.f, 1.f),	 Vector3(0.f, -1.f, 0.f), Vector2(1.f, 1.f) },
-		{ Vector3(-1.f, -1.f, 1.f),	 Vector3(0.f, -1.f, 0.f), Vector2(0.f, 1.f) },
-																		  
-		// +Z															  
-		{ Vector3(-1.f, -1.f, 1.f), Vector3(0.f, 0.f, 1.f), Vector2(0.f, 0.f) },
-		{ Vector3(1.f, -1.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector2(1.f, 0.f) },
-		{ Vector3(1.f, 1.f, 1.f),   Vector3(0.f, 0.f, 1.f), Vector2(1.f, 1.f) },
-		{ Vector3(-1.f, 1.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector2(0.f, 1.f) },
-		// -Z															  
-		{ Vector3(-1.f, 1.f, -1.f),  Vector3(0.f, 0.f, -1.f), Vector2(0.f, 0.f) },
-		{ Vector3(1.f, 1.f, -1.f),	 Vector3(0.f, 0.f, -1.f), Vector2(1.f, 0.f) },
-		{ Vector3(1.f, -1.f, -1.f),  Vector3(0.f, 0.f, -1.f), Vector2(1.f, 1.f) },
-		{ Vector3(-1.f, -1.f, -1.f), Vector3(0.f, 0.f, -1.f), Vector2(0.f, 1.f) }
+		{ Vector3(1.f, 1.f, -1.f),  Vector2(0.f, 0.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
+		{ Vector3(1.f, 1.f, 1.f),   Vector2(1.f, 0.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
+		{ Vector3(1.f, -1.f, 1.f),  Vector2(1.f, 1.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
+		{ Vector3(1.f, -1.f, -1.f), Vector2(0.f, 1.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
+		// -X											 
+		{ Vector3(-1.f, 1.f, 1.f),   Vector2(0.f, 0.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
+		{ Vector3(-1.f, 1.f, -1.f),	 Vector2(1.f, 0.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
+		{ Vector3(-1.f, -1.f, -1.f), Vector2(1.f, 1.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
+		{ Vector3(-1.f, -1.f, 1.f),  Vector2(0.f, 1.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
+														 
+		// +Y											 
+		{ Vector3(-1.f, 1.f, 1.f),	Vector2(0.f, 0.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.f, 1.f, 1.f),	Vector2(1.f, 0.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.f, 1.f, -1.f),	Vector2(1.f, 1.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(-1.f, 1.f, -1.f),	Vector2(0.f, 1.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		// -Y											 
+		{ Vector3(-1.f, -1.f, -1.f),Vector2(0.f, 0.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.f, -1.f, -1.f),	Vector2(1.f, 0.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.f, -1.f, 1.f),	Vector2(1.f, 1.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(-1.f, -1.f, 1.f),	Vector2(0.f, 1.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
+														 
+		// +Z											 
+		{ Vector3(1.f, 1.f, 1.f),   Vector2(0.f, 0.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
+		{ Vector3(-1.f, 1.f, 1.f),  Vector2(1.f, 0.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
+		{ Vector3(-1.f, -1.f, 1.f), Vector2(1.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
+		{ Vector3(1.f, -1.f, 1.f),  Vector2(0.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
+		// -Z											 
+		{ Vector3(-1.f, 1.f, -1.f),  Vector2(0.f, 0.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.f, 1.f, -1.f),	 Vector2(1.f, 0.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(1.f, -1.f, -1.f),  Vector2(1.f, 1.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) },
+		{ Vector3(-1.f, -1.f, -1.f), Vector2(0.f, 1.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) }
 	};
 
 	//for(auto& v : vertices)
@@ -411,9 +432,10 @@ bool GameApp::InitializeScene()
 	// TODO : VertexShader.hlsl 파일에서 이미 버텍스 프로세싱 코드가 있다, 뒤에 더 봐야할듯
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
-		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXCOORD", 0, DXGI_FORMAT_R32G32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0,D3D11_APPEND_ALIGNED_ELEMENT,D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TEXTURE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 	ID3DBlob* vertexShaderBuffer = nullptr; // 컴파일된 코드에 액세스할 포인터 변수
 	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_4_0", &vertexShaderBuffer));
@@ -491,7 +513,9 @@ bool GameApp::InitializeScene()
 
 
 	/// 7. 텍스처 로드 & sample state 생성
-	HR_T(CreateDDSTextureFromFile(m_pDevice, L"seafloor.dds", nullptr, &m_pTextureRV));
+	HR_T(CreateWICTextureFromFile(m_pDevice, L"Bricks059_1K-JPG_Color.jpg", nullptr, &m_pTextureRV));
+	HR_T(CreateWICTextureFromFile(m_pDevice, L"Bricks059_1K-JPG_NormalDX.jpg", nullptr, &m_pNormalRV));
+	HR_T(CreateWICTextureFromFile(m_pDevice, L"Bricks059_Specular.png", nullptr, &m_pSpecularRV));
 
 	D3D11_SAMPLER_DESC sampleDesc = {};
 	sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
@@ -518,6 +542,8 @@ void GameApp::FinalizeScene()
 	SAFE_RELEASE(m_pPixelShader);
 	SAFE_RELEASE(m_pDepthStencilView);
 	SAFE_RELEASE(m_pTextureRV);
+	SAFE_RELEASE(m_pSpecularRV);
+	SAFE_RELEASE(m_pNormalRV);
 	SAFE_RELEASE(m_pSamplerLinear);
 }
 
