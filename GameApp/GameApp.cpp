@@ -107,7 +107,7 @@ void GameApp::Update()
 	//// Sun
 	XMMATRIX spinS = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_CubePitch), XMConvertToRadians(m_CubeYAW), 0.f);
 	XMMATRIX scaleS = XMMatrixScaling(100.f, 100.f, 100.f);
-	XMMATRIX translateS = XMMatrixTranslation(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z);
+	XMMATRIX translateS = XMMatrixTranslation(m_TranslateCube.x, m_TranslateCube.y, m_TranslateCube.z);
 	m_WorldSun = scaleS * spinS * translateS;
 	//m_WorldSun = XMMatrixMultiply(scaleS, spinS);
 
@@ -126,11 +126,14 @@ void GameApp::Update()
 	//m_WorldMoon = scaleE * spinM * translateM * orbitM;
 
 	// Camera
+
+	//m_TranslateCamera = XMVector4Transform(m_OriTranslateCamera, XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)));
 	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
-	XMVECTOR At = XMVectorSet(m_TranslateSun.x, m_TranslateSun.y, m_TranslateSun.z, 0.f);
+	XMVECTOR At = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z + 1.f, 0.f);
+	//XMVECTOR To = XMVectorSubtract(m_TranslateCube, m_TranslateCamera);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
-	m_View = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)), XMMatrixLookAtLH(Eye, At, Up));
-	m_TranslateCamera = m_View.Translation();
+	//m_View = XMMatrixLookToLH(m_TranslateCamera, To, Up);
+	m_View = XMMatrixLookAtLH(Eye, At, Up);
 	
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
@@ -147,14 +150,14 @@ void GameApp::Render()
 	{
 		ImGui::Begin("Edit Transform");
 
-		ImGui::SliderFloat3("Sun", (float*)&m_TranslateSun, -500.f, 500.f);
-		ImGui::SliderFloat3("Earth", (float*)&m_TranslateEarth, -50.f, 50.f);
-		ImGui::SliderFloat3("Moon", (float*)&m_TranslateMoon, -50.f, 50.f);
+		ImGui::SliderFloat3("Cube", (float*)&m_TranslateCube, -500.f, 500.f);
+		//ImGui::SliderFloat3("Earth", (float*)&m_TranslateEarth, -50.f, 50.f);
+		//ImGui::SliderFloat3("Moon", (float*)&m_TranslateMoon, -50.f, 50.f);
 		ImGui::SliderFloat3("Camera", (float*)&m_TranslateCamera, -1500.f, 1500.f);
 		ImGui::SliderFloat("FOV", &m_FOV, 0.1f, 180.f);
 		ImGui::SliderFloat("Near", &m_NearZ, 0.01f, 100.f);
 		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 10000.f);
-		ImGui::SliderFloat("CameraYAW", &m_CameraRotation, -360.f, 360.f);
+		//ImGui::SliderFloat("CameraRotation", &m_CameraRotation, -360.f, 360.f);
 		ImGui::SliderFloat("CubeYAW", &m_CubeYAW, -360.f, 360.f);
 		ImGui::SliderFloat("CubePitch", &m_CubePitch, -360.f, 360.f);
 

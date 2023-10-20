@@ -29,6 +29,7 @@ float4 main(PS_INPUT input) : SV_Target
     float3 diffuseColor = saturate(dot(normal, -lightDir) * colorFactor) * LightIntensity;
 
     // specular(Blinn Phong)
+    //CameraTranslation = mul(float4(CameraTranslation, 1.f), World);
     float3 viewVector = normalize(CameraTranslation - input.PixelPos);
     float3 halfVector = normalize(-lightDir + viewVector);
     float fHDotN = max(0.f, dot(halfVector, normal));

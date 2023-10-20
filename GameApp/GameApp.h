@@ -44,6 +44,7 @@ public:
 	Matrix m_WorldEarth;
 	Matrix m_WorldMoon;
 	Matrix m_View;
+
 	Matrix m_Projection;
 	// 조명 상수 버퍼
 	Vector4 m_LightDirection = { 0.f, 0.f, 1.f, 1.f };
@@ -53,10 +54,11 @@ public:
 	FLOAT m_SpecularPower = 2000.f;
 
 	// ImGUI와 연결할 정보
-	Vector3 m_TranslateSun = { 0.f, 0.f, 0.f };
-	Vector3 m_TranslateEarth = { -3.f, 0.f, 0.f };
-	Vector3 m_TranslateMoon = { -5.f, 0.f, 0.f };
+	Vector3 m_TranslateCube = { 0.f, 0.f, 0.f };
+	//Vector3 m_TranslateEarth = { -3.f, 0.f, 0.f };
+	//Vector3 m_TranslateMoon = { -5.f, 0.f, 0.f };
 	Vector3 m_TranslateCamera = { 0.f, 0.f, -500.f };
+	Vector3 m_OriTranslateCamera = m_TranslateCamera;
 	FLOAT m_FOV = 45.f;	// XM_PIDIV4
 	FLOAT m_NearZ = 0.01f;
 	FLOAT m_FarZ = 10000.f;
