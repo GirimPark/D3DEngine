@@ -2,11 +2,12 @@
 #include "GameApp.h"
 
 #include <directxtk/SimpleMath.h>
-#include <directxtk/DDSTextureLoader.h>
 #include <directxtk/WICTextureLoader.h>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
+
+#include "../Engine/ModelLoader.h"
 
 #pragma comment (lib, "d3d11.lib")
 
@@ -39,14 +40,14 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	return (int)1;
 }
 
-struct Vertex
+struct VertexOri
 {
 	Vector3 position;
 	Vector2 texture;
 	Vector3 normal;
 	Vector3 tangent;
 
-	Vertex(Vector3 position, Vector2 texture, Vector3 normal, Vector3 tangent)
+	VertexOri(Vector3 position, Vector2 texture, Vector3 normal, Vector3 tangent)
 		: position(position), texture(texture), normal(normal), tangent(tangent) { }
 };
 
@@ -101,38 +102,16 @@ bool GameApp::Initialize()
 
 void GameApp::Update()
 {
-	static float angle = 0.f;
-	angle += 0.002f;
-
-	//// Sun
-	XMMATRIX spinS = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_CubePitch), XMConvertToRadians(m_CubeYAW), 0.f);
-	XMMATRIX scaleS = XMMatrixScaling(100.f, 100.f, 100.f);
-	XMMATRIX translateS = XMMatrixTranslation(m_TranslateCube.x, m_TranslateCube.y, m_TranslateCube.z);
-	m_WorldSun = scaleS * spinS * translateS;
-	//m_WorldSun = XMMatrixMultiply(scaleS, spinS);
-
-	//// Earth
-	//XMMATRIX spinE = XMMatrixRotationY(angle * 2.f);
-	//XMMATRIX orbitE = m_WorldSun;
-	//XMMATRIX translateE = XMMatrixTranslation(m_TranslateEarth.x, m_TranslateEarth.y, m_TranslateEarth.z);
-	//XMMATRIX scaleE = XMMatrixScaling(0.3f, 0.3f, 0.3f);
-	//m_WorldEarth = scaleE * spinE * translateE * orbitE;
-
-	//// Moon
-	//XMMATRIX spinM = XMMatrixRotationY(angle * 4.f);
-	//XMMATRIX orbitM = m_WorldEarth;
-	//XMMATRIX translateM = XMMatrixTranslation(m_TranslateMoon.x, m_TranslateMoon.y, m_TranslateMoon.z);
-	//XMMATRIX scaleM = XMMatrixScaling(0.4f, 0.4f, 0.4f);
-	//m_WorldMoon = scaleE * spinM * translateM * orbitM;
+	// Model
+	XMMATRIX spinS = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
+	XMMATRIX translateS = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
+	m_WorldModel = spinS * translateS;
 
 	// Camera
-
 	//m_TranslateCamera = XMVector4Transform(m_OriTranslateCamera, XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)));
 	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
 	XMVECTOR At = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z + 1.f, 0.f);
-	//XMVECTOR To = XMVectorSubtract(m_TranslateCube, m_TranslateCamera);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
-	//m_View = XMMatrixLookToLH(m_TranslateCamera, To, Up);
 	m_View = XMMatrixLookAtLH(Eye, At, Up);
 	
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
@@ -142,6 +121,45 @@ void GameApp::Update()
 
 void GameApp::Render()
 {
+#if USE_FLIPMODE == 1
+	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
+#endif
+
+	// 화면, Depth Buffer 초기화
+	DirectX::SimpleMath::Color color(0.f, 0.f, 0.f, 1.f);
+	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
+	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.f, 0);
+
+	// Draw 계열 함수를 호출하기 전 렌더링 파이프라인에 필수 스테이지 설정을 해야한다.
+	m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);	// 정점을 이어서 그리는 방식
+	m_pDeviceContext->IASetInputLayout(m_pInputLayout);
+	m_pDeviceContext->VSSetConstantBuffers(0, 1, &m_pTransformConstantBuffer);
+	m_pDeviceContext->PSSetConstantBuffers(1, 1, &m_pLightingConstantBuffer);
+	m_pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
+	m_pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
+	m_pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
+
+	/// LightingConstantBuffer
+	LightingConstantBuffer LCB;
+	LCB.mLightDirection = m_LightDirection;
+	LCB.mLightColor = m_LightColor;
+	LCB.mCameraTranslation = m_TranslateCamera;
+	LCB.mLightIntensity = m_LightIntensity;
+	LCB.mAmbientPower = m_AmbientPower;
+	LCB.mSpecularPower = m_SpecularPower;
+	m_pDeviceContext->UpdateSubresource(m_pLightingConstantBuffer, 0, nullptr, &LCB, 0, 0);
+
+	/// TransformConstantBuffer
+	// Sun : Update Variables
+	TransformConstantBuffer TCBSun;
+	TCBSun.mWorld = XMMatrixTranspose(m_WorldModel);
+	TCBSun.mView = XMMatrixTranspose(m_View);
+	TCBSun.mProjection = XMMatrixTranspose(m_Projection);
+	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBSun, 0, 0);
+	// Render
+	m_pModelLoader->Draw(m_pDeviceContext);
+
+
 	/// ImGUI
 	ImGui_ImplDX11_NewFrame();
 	ImGui_ImplWin32_NewFrame();
@@ -150,16 +168,13 @@ void GameApp::Render()
 	{
 		ImGui::Begin("Edit Transform");
 
-		ImGui::SliderFloat3("Cube", (float*)&m_TranslateCube, -500.f, 500.f);
-		//ImGui::SliderFloat3("Earth", (float*)&m_TranslateEarth, -50.f, 50.f);
-		//ImGui::SliderFloat3("Moon", (float*)&m_TranslateMoon, -50.f, 50.f);
+		ImGui::SliderFloat3("Model", (float*)&m_TranslateModel, -500.f, 500.f);
 		ImGui::SliderFloat3("Camera", (float*)&m_TranslateCamera, -1500.f, 1500.f);
 		ImGui::SliderFloat("FOV", &m_FOV, 0.1f, 180.f);
 		ImGui::SliderFloat("Near", &m_NearZ, 0.01f, 100.f);
 		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 10000.f);
-		//ImGui::SliderFloat("CameraRotation", &m_CameraRotation, -360.f, 360.f);
-		ImGui::SliderFloat("CubeYAW", &m_CubeYAW, -360.f, 360.f);
-		ImGui::SliderFloat("CubePitch", &m_CubePitch, -360.f, 360.f);
+		ImGui::SliderFloat("ModelYAW", &m_ModelYAW, -360.f, 360.f);
+		ImGui::SliderFloat("ModelPitch", &m_ModelPitch, -360.f, 360.f);
 
 		ImGui::End();
 	}
@@ -176,71 +191,6 @@ void GameApp::Render()
 	}
 
 	ImGui::Render();
-
-#if USE_FLIPMODE == 1
-	m_pDeviceContext->OMSetRenderTargets(1, &m_pRenderTargetView, m_pDepthStencilView);
-#endif
-
-	// 화면, Depth Buffer 초기화
-	DirectX::SimpleMath::Color color(0.f, 0.f, 0.f, 1.f);
-	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
-	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.f, 0);
-
-	// Draw 계열 함수를 호출하기 전 렌더링 파이프라인에 필수 스테이지 설정을 해야한다.
-	m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);	// 정점을 이어서 그리는 방식
-	m_pDeviceContext->IASetVertexBuffers(0, 1, &m_pVertexBuffer, &m_VertexBufferStride, &m_VertexBufferOffset);
-	m_pDeviceContext->IASetIndexBuffer(m_pIndexBuffer, DXGI_FORMAT_R16_UINT, 0);
-	m_pDeviceContext->IASetInputLayout(m_pInputLayout);
-	m_pDeviceContext->VSSetConstantBuffers(0, 1, &m_pTransformConstantBuffer);
-	m_pDeviceContext->PSSetConstantBuffers(1, 1, &m_pLightingConstantBuffer);
-	m_pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
-	m_pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
-	m_pDeviceContext->PSSetShaderResources(0, 1, &m_pTextureRV);
-	m_pDeviceContext->PSSetShaderResources(1, 1, &m_pNormalRV);
-	m_pDeviceContext->PSSetShaderResources(2, 1, &m_pSpecularRV);
-	m_pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
-
-
-	/// LightingConstantBuffer
-	LightingConstantBuffer LCB;
-	LCB.mLightDirection = m_LightDirection;
-	LCB.mLightColor = m_LightColor;
-	LCB.mCameraTranslation = m_TranslateCamera;
-	LCB.mLightIntensity = m_LightIntensity;
-	LCB.mAmbientPower = m_AmbientPower;
-	LCB.mSpecularPower = m_SpecularPower;
-	m_pDeviceContext->UpdateSubresource(m_pLightingConstantBuffer, 0, nullptr, &LCB, 0, 0);
-
-	/// TransformConstantBuffer
-	// Sun : Update Variables
-	TransformConstantBuffer TCBSun;
-	TCBSun.mWorld = XMMatrixTranspose(m_WorldSun);
-	TCBSun.mView = XMMatrixTranspose(m_View);
-	TCBSun.mProjection = XMMatrixTranspose(m_Projection);
-	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBSun, 0, 0);
-	// Render
-	m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
-
-	//// Earth : Update Variables
-	//TransformConstantBuffer TCBEarth;
-	//TCBEarth.mWorld = XMMatrixTranspose(m_WorldEarth);
-	//TCBEarth.mView = XMMatrixTranspose(m_View);
-	//TCBEarth.mProjection = XMMatrixTranspose(m_Projection);
-	//m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBEarth, 0, 0);
-	//// Render
-	//m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
-
-	//// Earth : Update Variables
-	//TransformConstantBuffer TCBMoon;
-	//TCBMoon.mWorld = XMMatrixTranspose(m_WorldMoon);
-	//TCBMoon.mView = XMMatrixTranspose(m_View);
-	//TCBMoon.mProjection = XMMatrixTranspose(m_Projection);
-	//m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBMoon, 0, 0);
-	//// Render
-	//m_pDeviceContext->DrawIndexed(m_nIndices, 0, 0);
-
-
-	/// ImGUI
 	ImGui_ImplDX11_RenderDrawData(ImGui::GetDrawData());
 
 	// Present the information rendered to the back buffer to the front buffer (the screen)
@@ -258,7 +208,6 @@ bool GameApp::InitializeD3D()
 {
 	// 결과값
 	HRESULT hr = 0;
-
 
 	/// 1. 스왑체인 속성 설정 구조체 생성
 	// https://learn.microsoft.com/ko-kr/windows/win32/api/dxgi/ns-dxgi-dxgi_swap_chain_desc
@@ -368,67 +317,16 @@ bool GameApp::InitializeScene()
 	HRESULT hr = 0;
 	ID3DBlob* errorMessage = nullptr;	// 컴파일 에러 메시지가 저장될 버퍼, 임의 길이 데이터 반환에 사용
 
-	///1. Render() 에서 파이프라인에 바인딩할 버텍스 버퍼 및 버퍼 정보 준비
-
-	Vertex vertices[] =
-	{
-		// +X
-		{ Vector3(1.f, 1.f, -1.f),  Vector2(0.f, 0.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
-		{ Vector3(1.f, 1.f, 1.f),   Vector2(1.f, 0.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
-		{ Vector3(1.f, -1.f, 1.f),  Vector2(1.f, 1.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
-		{ Vector3(1.f, -1.f, -1.f), Vector2(0.f, 1.f),  Vector3(1.f, 0.f, 0.f), Vector3(0.f, 0.f, 1.f) },
-		// -X											 
-		{ Vector3(-1.f, 1.f, 1.f),   Vector2(0.f, 0.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
-		{ Vector3(-1.f, 1.f, -1.f),	 Vector2(1.f, 0.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
-		{ Vector3(-1.f, -1.f, -1.f), Vector2(1.f, 1.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
-		{ Vector3(-1.f, -1.f, 1.f),  Vector2(0.f, 1.f), Vector3(-1.f, 0.f, 0.f), Vector3(0.f, 0.f, -1.f) },
-														 
-		// +Y											 
-		{ Vector3(-1.f, 1.f, 1.f),	Vector2(0.f, 0.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.f, 1.f, 1.f),	Vector2(1.f, 0.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.f, 1.f, -1.f),	Vector2(1.f, 1.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(-1.f, 1.f, -1.f),	Vector2(0.f, 1.f),  Vector3(0.f, 1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		// -Y											 
-		{ Vector3(-1.f, -1.f, -1.f),Vector2(0.f, 0.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.f, -1.f, -1.f),	Vector2(1.f, 0.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.f, -1.f, 1.f),	Vector2(1.f, 1.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(-1.f, -1.f, 1.f),	Vector2(0.f, 1.f),  Vector3(0.f, -1.f, 0.f), Vector3(1.f, 0.f, 0.f) },
-														 
-		// +Z											 
-		{ Vector3(1.f, 1.f, 1.f),   Vector2(0.f, 0.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
-		{ Vector3(-1.f, 1.f, 1.f),  Vector2(1.f, 0.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
-		{ Vector3(-1.f, -1.f, 1.f), Vector2(1.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
-		{ Vector3(1.f, -1.f, 1.f),  Vector2(0.f, 1.f),  Vector3(0.f, 0.f, 1.f), Vector3(-1.f, 0.f, 0.f) },
-		// -Z											 
-		{ Vector3(-1.f, 1.f, -1.f),  Vector2(0.f, 0.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.f, 1.f, -1.f),	 Vector2(1.f, 0.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(1.f, -1.f, -1.f),  Vector2(1.f, 1.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) },
-		{ Vector3(-1.f, -1.f, -1.f), Vector2(0.f, 1.f), Vector3(0.f, 0.f, -1.f), Vector3(1.f, 0.f, 0.f) }
-	};
-
-	//for(auto& v : vertices)
-	//{
-	//	v.normal = v.position;
-	//	v.normal.Normalize();
-	//}
-
-	m_VertexCount = ARRAYSIZE(vertices);
-
-	// 정점 버퍼 생성
-	D3D11_BUFFER_DESC vbDesc = {};	// 버퍼 리소스에 대해 설명하는 구조체
-	vbDesc.ByteWidth = sizeof(Vertex) * m_VertexCount;
-	vbDesc.Usage = D3D11_USAGE_DEFAULT;	// 렌더링 중 예상되는 리소스 사용 식별, 리소스에 대한 액세스
-	vbDesc.BindFlags = D3D11_BIND_VERTEX_BUFFER;	// 버퍼가 파이프라인에 바인딩되는 방법
-	vbDesc.CPUAccessFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA vbData = {};	// 초기화 데이터를 설명하는 구조체
-	vbData.pSysMem = vertices;
-	HR_T(hr = m_pDevice->CreateBuffer(&vbDesc, &vbData, &m_pVertexBuffer));
-
-	// 버텍스 버퍼 정보
-	m_VertexBufferStride = sizeof(Vertex);
-	m_VertexBufferOffset = 0;
-
+	/// 버텍스 셰이더, 픽셀 셰이더 생성
+	ID3DBlob* vertexShaderBuffer = nullptr; // 컴파일된 코드에 액세스할 포인터 변수
+	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_4_0", &vertexShaderBuffer));
+	HR_T(m_pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(),
+		vertexShaderBuffer->GetBufferSize(), NULL, &m_pVertexShader));
+	ID3DBlob* pixelShaderBuffer = nullptr;
+	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_4_0", &pixelShaderBuffer));
+	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
+		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
+	
 
 	/// 2. Render() 에서 파이프라인에 바인딩할 InputLayout 생성
 	// 인풋 레이아웃은 버텍스 쉐이더가 입력받을 데이터의 형식을 지정한다.
@@ -436,78 +334,37 @@ bool GameApp::InitializeScene()
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXTURE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
+		{"TEXTURE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
+
 	};
-	ID3DBlob* vertexShaderBuffer = nullptr; // 컴파일된 코드에 액세스할 포인터 변수
-	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_4_0", &vertexShaderBuffer));
-	HR_T(hr = m_pDevice->CreateInputLayout(layout, ARRAYSIZE(layout),
+	HR_T(m_pDevice->CreateInputLayout(layout, ARRAYSIZE(layout),
 		vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), &m_pInputLayout));
 
-
-	/// 3. Render()에서 파이프라인에 바인딩할 버텍스 셰이더 생성
-	// pClassLinkage : HLSL 동적 연결을 캡슐화
-	HR_T(m_pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(),
-		vertexShaderBuffer->GetBufferSize(), NULL, &m_pVertexShader));
 	SAFE_RELEASE(vertexShaderBuffer);
-
-
-	/// 4. Render()에서 파이프라인에 바인딩할 인덱스 버퍼 생성
-	WORD indices[] =
-	{
-		0,1,2,	0,2,3,
-		4,5,6,	4,6,7,
-		8,9,10,	8,10,11,
-		12,13,14,	12,14,15,
-		16,17,18,	16,18,19,
-		20,21,22,	20,22,23
-	};
-
-	// 인덱스 개수 저장
-	m_nIndices = ARRAYSIZE(indices);
-	D3D11_BUFFER_DESC ibDesc = {};
-	ibDesc.ByteWidth = sizeof(WORD) * m_nIndices;
-	ibDesc.Usage = D3D11_USAGE_DEFAULT;
-	ibDesc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-	ibDesc.CPUAccessFlags = 0;
-
-	D3D11_SUBRESOURCE_DATA ibData = {};
-	ibData.pSysMem = indices;
-	HR_T(m_pDevice->CreateBuffer(&ibDesc, &ibData, &m_pIndexBuffer));
-
-
-	/// 5. Render에서 파이프라인에 바인딩할 픽셀 셰이더 생성
-	ID3DBlob* pixelShaderBuffer = nullptr;
-	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_4_0", &pixelShaderBuffer));
-	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
-		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
 	SAFE_RELEASE(pixelShaderBuffer);
 
 
-	/// 6. Render()에서 파이프라인에 바인딩할 상수 버퍼 생성
+	/// Render()에서 파이프라인에 바인딩할 상수 버퍼 생성
 	/// TODO 여기부터
 	//	위치 상수 버퍼
 	D3D11_BUFFER_DESC TCBDesc = {};
+	ZeroMemory(&TCBDesc, sizeof(TCBDesc));
 	TCBDesc.Usage = D3D11_USAGE_DEFAULT;
 	TCBDesc.ByteWidth = sizeof(TransformConstantBuffer);
 	TCBDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	TCBDesc.CPUAccessFlags = 0;
 	HR_T(m_pDevice->CreateBuffer(&TCBDesc, nullptr, &m_pTransformConstantBuffer));
 
-	// 쉐이더에 전달할 데이터 설정
-	m_WorldSun = XMMatrixIdentity();
-
+	m_WorldModel = XMMatrixIdentity();
 	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
 	XMVECTOR At = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 	m_View = XMMatrixLookAtLH(Eye, At, Up);
-
 	m_Projection = XMMatrixPerspectiveFovLH(m_FOV, ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
-
 
 	// 조명 상수 버퍼
 	D3D11_BUFFER_DESC LCBDesc = {};
+	ZeroMemory(&LCBDesc, sizeof(LCBDesc));
 	LCBDesc.Usage = D3D11_USAGE_DEFAULT;
 	LCBDesc.ByteWidth = sizeof(LightingConstantBuffer);
 	LCBDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
@@ -515,12 +372,9 @@ bool GameApp::InitializeScene()
 	HR_T(m_pDevice->CreateBuffer(&LCBDesc, nullptr, &m_pLightingConstantBuffer));
 
 
-	/// 7. 텍스처 로드 & sample state 생성
-	HR_T(CreateWICTextureFromFile(m_pDevice, L"Bricks059_1K-JPG_Color.jpg", nullptr, &m_pTextureRV));
-	HR_T(CreateWICTextureFromFile(m_pDevice, L"Bricks059_1K-JPG_NormalDX.jpg", nullptr, &m_pNormalRV));
-	HR_T(CreateWICTextureFromFile(m_pDevice, L"Bricks059_Specular.png", nullptr, &m_pSpecularRV));
-
+	/// sample state 생성
 	D3D11_SAMPLER_DESC sampleDesc = {};
+	ZeroMemory(&sampleDesc, sizeof(sampleDesc));
 	sampleDesc.Filter = D3D11_FILTER_MIN_MAG_MIP_LINEAR;
 	sampleDesc.AddressU = D3D11_TEXTURE_ADDRESS_WRAP;
 	sampleDesc.AddressV = D3D11_TEXTURE_ADDRESS_WRAP;
@@ -530,24 +384,29 @@ bool GameApp::InitializeScene()
 	sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	HR_T(m_pDevice->CreateSamplerState(&sampleDesc, &m_pSamplerLinear));
 
+	/// 모델 로더 생성
+	m_pModelLoader = new ModelLoader;
+	m_ModelPath = "../FBX/box.fbx";
+	HR_T(m_pModelLoader->Load(m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath));
 
 	return true;
 }
 
 void GameApp::FinalizeScene()
 {
-	SAFE_RELEASE(m_pVertexBuffer);
-	SAFE_RELEASE(m_pIndexBuffer);
 	SAFE_RELEASE(m_pInputLayout);
 	SAFE_RELEASE(m_pVertexShader);
 	SAFE_RELEASE(m_pTransformConstantBuffer);
 	SAFE_RELEASE(m_pLightingConstantBuffer);
 	SAFE_RELEASE(m_pPixelShader);
 	SAFE_RELEASE(m_pDepthStencilView);
-	SAFE_RELEASE(m_pTextureRV);
-	SAFE_RELEASE(m_pSpecularRV);
-	SAFE_RELEASE(m_pNormalRV);
 	SAFE_RELEASE(m_pSamplerLinear);
+	if(m_pModelLoader)
+	{
+		m_pModelLoader->Close();
+		delete m_pModelLoader;
+		m_pModelLoader = nullptr;
+	}
 }
 
 bool GameApp::InitializeImGUI()

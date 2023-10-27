@@ -28,8 +28,8 @@ struct VS_INPUT
 {
     float4 Pos : POSITION;
     float2 Texture : TEXTURE;
-    float3 Normal : NORMAL;
-    float3 Tangent : TANGENT;
+    //float3 Normal : NORMAL;
+    //float3 Tangent : TANGENT;
 };
 
 struct PS_INPUT
@@ -37,7 +37,7 @@ struct PS_INPUT
     float4 Pos : SV_POSITION;
     float2 Texture : TEXCOORD0;
     float3 PixelPos : TEXCOORD1;
-    float3 Tangent : TEXCOORD2;
-    float3 BiTangent : TEXCOORD3;
-    float3 Normal : TEXCOORD4;
+    //float3 Tangent : TEXCOORD2;
+    //float3 BiTangent : TEXCOORD3;
+    //float3 Normal : TEXCOORD4;
 };
