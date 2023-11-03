@@ -1,13 +1,12 @@
 ﻿#include "framework.h"
 #include "GameApp.h"
 
+#include "../Engine/ModelLoader.h"
+
 #include <directxtk/SimpleMath.h>
-#include <directxtk/WICTextureLoader.h>
 #include <imgui.h>
 #include <imgui_impl_win32.h>
 #include <imgui_impl_dx11.h>
-
-#include "../Engine/ModelLoader.h"
 
 #pragma comment (lib, "d3d11.lib")
 
@@ -103,9 +102,10 @@ bool GameApp::Initialize()
 void GameApp::Update()
 {
 	// Model
-	XMMATRIX spinS = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
-	XMMATRIX translateS = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
-	m_WorldModel = spinS * translateS;
+	XMMATRIX scale = XMMatrixScaling(100.f, 100.f, 100.f);
+	XMMATRIX spin = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
+	XMMATRIX translate = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
+	m_WorldModel = spin * translate;
 
 	// Camera
 	//m_TranslateCamera = XMVector4Transform(m_OriTranslateCamera, XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)));
@@ -334,8 +334,9 @@ bool GameApp::InitializeScene()
 	D3D11_INPUT_ELEMENT_DESC layout[] =
 	{
 		{"POSITION", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
-		{"TEXTURE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
-
+		{"TEXTURE", 0, DXGI_FORMAT_R32G32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"NORMAL", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0},
+		{"TANGENT", 0, DXGI_FORMAT_R32G32B32_FLOAT, 0, D3D11_APPEND_ALIGNED_ELEMENT, D3D11_INPUT_PER_VERTEX_DATA, 0}
 	};
 	HR_T(m_pDevice->CreateInputLayout(layout, ARRAYSIZE(layout),
 		vertexShaderBuffer->GetBufferPointer(), vertexShaderBuffer->GetBufferSize(), &m_pInputLayout));
@@ -386,7 +387,6 @@ bool GameApp::InitializeScene()
 
 	/// 모델 로더 생성
 	m_pModelLoader = new ModelLoader;
-	m_ModelPath = "../FBX/box.fbx";
 	HR_T(m_pModelLoader->Load(m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath));
 
 	return true;

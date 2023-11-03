@@ -12,7 +12,9 @@ using namespace DirectX;
 struct Vertex
 {
 	FLOAT X, Y, Z;
-	XMFLOAT2 texcoord;
+	XMFLOAT2 texture;
+	XMFLOAT3 normal;
+	XMFLOAT3 tangent;
 };
 
 struct Texture
@@ -33,6 +35,7 @@ public:
 	std::vector<Vertex> m_vertices;
 	std::vector<UINT> m_indices;
 	std::vector<Texture> m_textures;
+	INT m_textureMatrix;
 	ID3D11Device* m_device;
 
 	Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, const std::vector<Texture> textures)
@@ -56,8 +59,33 @@ public:
 
 		for(const auto& texture : m_textures)
 		{
-			devcon->PSSetShaderResources(0, 1, &texture.texture);
+			if (texture.type == "texture_diffuse")
+			{
+				devcon->PSSetShaderResources(0, 1, &texture.texture);
+				m_textureMatrix += 1;
+			}
+			else if (texture.type == "texture_normal")
+			{
+				devcon->PSSetShaderResources(1, 1, &texture.texture);
+				m_textureMatrix += 2;
+			}
+			else if(texture.type == "texture_specular")
+			{
+				devcon->PSSetShaderResources(2, 1, &texture.texture);
+				m_textureMatrix += 4;
+			}
+			else if (texture.type == "texture_emissive")
+			{
+				devcon->PSSetShaderResources(3, 1, &texture.texture);
+				m_textureMatrix += 8;
+			}
+			else if (texture.type == "texture_opacity")
+			{
+				devcon->PSSetShaderResources(4, 1, &texture.texture);
+				m_textureMatrix += 16;
+			}
 		}
+		//devcon->UpdateSubresource()
 
 		devcon->DrawIndexed(static_cast<UINT>(m_indices.size()), 0, 0);
 	}

@@ -10,8 +10,8 @@ PS_INPUT main(VS_INPUT input)
     output.Pos = mul(output.Pos, View);
     output.Pos = mul(output.Pos, Projection);
     output.Texture = input.Texture;
-    //output.Tangent = normalize(mul(input.Tangent, (float3x3)World));
-    //output.Normal = normalize(mul(input.Normal, (float3x3)World));
-    //output.BiTangent = cross(output.Normal, output.Tangent);
+    output.Tangent = normalize(mul(input.Tangent, (float3x3)World));
+    output.Normal = normalize(mul(input.Normal, (float3x3)World));
+    output.BiTangent = cross(output.Normal, output.Tangent);
     return output;
 } 

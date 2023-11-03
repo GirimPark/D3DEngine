@@ -73,8 +73,22 @@ Mesh ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 
 		if (mesh->mTextureCoords[0])
 		{
-			vertex.texcoord.x = mesh->mTextureCoords[0][i].x;
-			vertex.texcoord.y = mesh->mTextureCoords[0][i].y;
+			vertex.texture.x = mesh->mTextureCoords[0][i].x;
+			vertex.texture.y = mesh->mTextureCoords[0][i].y;
+		}
+
+		if(mesh->HasNormals())
+		{
+			vertex.normal.x = mesh->mNormals[i].x;
+			vertex.normal.y = mesh->mNormals[i].y;
+			vertex.normal.z = mesh->mNormals[i].z;
+		}
+
+		if(mesh->HasTangentsAndBitangents())
+		{
+			vertex.tangent.x = mesh->mTangents[i].x;
+			vertex.tangent.y = mesh->mTangents[i].y;
+			vertex.tangent.z = mesh->mTangents[i].z;
 		}
 
 		vertices.push_back(vertex);
@@ -96,6 +110,14 @@ Mesh ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 
 		std::vector<Texture> diffuseMaps = this->LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		std::vector<Texture> normalMaps = this->LoadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", scene);
+		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		std::vector<Texture> specularMaps = this->LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
+		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		std::vector<Texture> emissiveMaps = this->LoadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive", scene);
+		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		std::vector<Texture> opacityMaps = this->LoadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity", scene);
+		textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
 	}
 
 	return Mesh(m_device, vertices, indices, textures);
@@ -134,6 +156,7 @@ std::vector<Texture> ModelLoader::LoadMaterialTextures(aiMaterial* material, aiT
 			else
 			{
 				std::string fileName = std::string(str.C_Str());
+				fileName = "../Textures/"+fileName.substr(fileName.find_last_of("/\\"));
 				fileName = m_directory + '/' + fileName;
 				std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
 				HR_T(CreateWICTextureFromFile(m_device, m_deviceContext, fileNameWs.c_str(), nullptr, &texture.texture));

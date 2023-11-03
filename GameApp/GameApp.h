@@ -33,7 +33,7 @@ public:
 
 	// 모델 로더
 	ModelLoader* m_pModelLoader = nullptr;
-	std::string m_ModelPath;
+	std::string m_ModelPath = "../Resources/FBX/zeldaPosed001.fbx";
 
 	// 상수 버퍼를 통해 전달할 변환 정보
 	// 위치 상수 버퍼
@@ -52,7 +52,7 @@ public:
 	Vector3 m_TranslateModel = { 0.f, 0.f, 0.f };
 	Vector3 m_TranslateCamera = { 0.f, 0.f, -500.f };
 	FLOAT m_FOV = 45.f;	// XM_PIDIV4
-	FLOAT m_NearZ = 0.01f;
+	FLOAT m_NearZ = 0.1f;
 	FLOAT m_FarZ = 10000.f;
 	FLOAT m_CameraRotation = 0.f;
 	FLOAT m_ModelYAW = 0.f;
