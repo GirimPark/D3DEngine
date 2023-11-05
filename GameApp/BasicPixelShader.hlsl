@@ -7,6 +7,7 @@ float4 main(PS_INPUT input) : SV_Target
 {
     /// NormalMap Mapping
     float normal;
+    // UseNormal이 어떻게 true가 되지 ???
     if(UseNormal)
     {
 	    float3 tangentSpace = txNormal.Sample(samLinear, input.Texture).rgb * 2.f - 1.f;
