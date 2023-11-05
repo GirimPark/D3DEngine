@@ -26,6 +26,15 @@ cbuffer LightingBuffer : register(b1)
     float SpecularPower;
 }
 
+cbuffer TexturingBuffer : register(b2)
+{
+    bool UseDiffuse;
+    bool UseNormal;
+    bool UseSpecular;
+    bool UseEmissive;
+    bool UseOpacity;
+}
+
 //--------------------------------------------------------------------------------------
 struct VS_INPUT
 {

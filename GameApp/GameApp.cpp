@@ -25,7 +25,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	// Debug Memory Leak Check at start point
 	//_CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | _CRTDBG_LEAK_CHECK_DF);
-	//_CrtSetBreakAlloc(2214);
+	//_CrtSetBreakAlloc(17369);
 
 	// 전역 문자열을 초기화합니다.
 	GameApp App(hInstance);
@@ -38,17 +38,6 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 
 	return (int)1;
 }
-
-struct VertexOri
-{
-	Vector3 position;
-	Vector2 texture;
-	Vector3 normal;
-	Vector3 tangent;
-
-	VertexOri(Vector3 position, Vector2 texture, Vector3 normal, Vector3 tangent)
-		: position(position), texture(texture), normal(normal), tangent(tangent) { }
-};
 
 struct TransformConstantBuffer
 {
@@ -394,12 +383,12 @@ bool GameApp::InitializeScene()
 
 void GameApp::FinalizeScene()
 {
-	SAFE_RELEASE(m_pInputLayout);
+	SAFE_RELEASE(m_pDepthStencilView);
 	SAFE_RELEASE(m_pVertexShader);
+	SAFE_RELEASE(m_pPixelShader);
+	SAFE_RELEASE(m_pInputLayout);
 	SAFE_RELEASE(m_pTransformConstantBuffer);
 	SAFE_RELEASE(m_pLightingConstantBuffer);
-	SAFE_RELEASE(m_pPixelShader);
-	SAFE_RELEASE(m_pDepthStencilView);
 	SAFE_RELEASE(m_pSamplerLinear);
 	if(m_pModelLoader)
 	{
