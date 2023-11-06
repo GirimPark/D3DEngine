@@ -31,6 +31,8 @@ private:
 	std::vector<Texture> m_loadedTextures;
 	HWND m_HWND = nullptr;
 
+
+
 	void ProcessNode(aiNode* node, const aiScene* scene);
 	Mesh ProcessMesh(aiMesh* mesh, const aiScene* scene);
 	std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName, const aiScene* scene);

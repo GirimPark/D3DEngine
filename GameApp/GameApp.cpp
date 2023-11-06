@@ -417,6 +417,7 @@ void GameApp::FinalizeScene()
 	SAFE_RELEASE(m_pTransformConstantBuffer);
 	SAFE_RELEASE(m_pLightingConstantBuffer);
 	SAFE_RELEASE(m_pSamplerLinear);
+	SAFE_RELEASE(m_pAlphaBlendState);
 	if(m_pModelLoader)
 	{
 		m_pModelLoader->Close();

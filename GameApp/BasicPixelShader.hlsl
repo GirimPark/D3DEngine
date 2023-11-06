@@ -6,7 +6,7 @@
 float4 main(PS_INPUT input) : SV_Target
 {
     /// NormalMap Mapping
-    float normal;
+    float3 normal;
     // UseNormal이 어떻게 true가 되지 ???
     if(UseNormal)
     {

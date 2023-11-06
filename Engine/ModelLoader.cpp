@@ -53,6 +53,7 @@ void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene)
 	for (UINT i = 0; i<node->mNumMeshes; ++i)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
+		//node->mTransformation;
 		m_meshes.push_back(this->ProcessMesh(mesh, scene));
 	}
 
@@ -115,11 +116,11 @@ Mesh ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 		std::vector<Texture> diffuseMaps = this->LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", scene);
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
 		std::vector<Texture> normalMaps = this->LoadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", scene);
-		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
 		std::vector<Texture> specularMaps = this->LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", scene);
-		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
 		std::vector<Texture> emissiveMaps = this->LoadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive", scene);
-		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
+		textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
 		std::vector<Texture> opacityMaps = this->LoadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity", scene);
 		textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
 	}
