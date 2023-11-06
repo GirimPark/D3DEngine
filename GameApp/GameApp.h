@@ -30,6 +30,7 @@ public:
 	ID3D11Buffer* m_pTransformConstantBuffer = nullptr;		// 위치 상수 버퍼
 	ID3D11Buffer* m_pLightingConstantBuffer = nullptr;	// 조명 상수 버퍼
 	ID3D11SamplerState* m_pSamplerLinear = nullptr;		// 샘플러 상태
+	ID3D11BlendState* m_pAlphaBlendState = nullptr;		// 블렌더 상태
 
 	// 모델 로더
 	ModelLoader* m_pModelLoader = nullptr;
@@ -45,7 +46,7 @@ public:
 	Vector4 m_LightDirection = { 0.f, 0.f, 1.f, 1.f };
 	Vector4 m_LightColor = { 1.f, 1.f, 1.f, 1.f };
 	FLOAT m_LightIntensity = 1.f;
-	FLOAT m_AmbientPower = 0.2f;
+	FLOAT m_AmbientPower = 0.1f;
 	FLOAT m_SpecularPower = 2000.f;
 
 	// ImGUI와 연결할 정보

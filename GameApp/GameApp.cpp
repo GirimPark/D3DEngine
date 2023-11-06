@@ -97,12 +97,18 @@ void GameApp::Update()
 	m_WorldModel = spin * translate;
 
 	// Camera
-	//m_TranslateCamera = XMVector4Transform(m_OriTranslateCamera, XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)));
+	//XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
+	//XMVECTOR To = XMVectorSubtract(m_TranslateModel, m_TranslateCamera);
+	//XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
+	//m_View = XMMatrixMultiply(XMMatrixRotationY(XMConvertToRadians(m_CameraRotation)), XMMatrixLookToLH(Eye, To, Up));
+	//m_TranslateCamera = m_View.Translation();
+
+	///
 	XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
 	XMVECTOR At = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z + 1.f, 0.f);
 	XMVECTOR Up = XMVectorSet(0.f, 1.f, 0.f, 0.f);
 	m_View = XMMatrixLookAtLH(Eye, At, Up);
-	
+
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
 	__super::Update();
@@ -122,11 +128,12 @@ void GameApp::Render()
 	// Draw 계열 함수를 호출하기 전 렌더링 파이프라인에 필수 스테이지 설정을 해야한다.
 	m_pDeviceContext->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY_TRIANGLELIST);	// 정점을 이어서 그리는 방식
 	m_pDeviceContext->IASetInputLayout(m_pInputLayout);
-	m_pDeviceContext->VSSetConstantBuffers(0, 1, &m_pTransformConstantBuffer);
+	m_pDeviceContext->VSSetConstantBuffers(0, 1, &m_pTransformConstantBuffer); 
 	m_pDeviceContext->PSSetConstantBuffers(1, 1, &m_pLightingConstantBuffer);
 	m_pDeviceContext->VSSetShader(m_pVertexShader, nullptr, 0);
 	m_pDeviceContext->PSSetShader(m_pPixelShader, nullptr, 0);
 	m_pDeviceContext->PSSetSamplers(0, 1, &m_pSamplerLinear);
+	m_pDeviceContext->OMSetBlendState(m_pAlphaBlendState, nullptr, 0xFFFFFFFF);
 
 	/// LightingConstantBuffer
 	LightingConstantBuffer LCB;
@@ -164,6 +171,7 @@ void GameApp::Render()
 		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 10000.f);
 		ImGui::SliderFloat("ModelYAW", &m_ModelYAW, -360.f, 360.f);
 		ImGui::SliderFloat("ModelPitch", &m_ModelPitch, -360.f, 360.f);
+		//ImGui::SliderFloat("CameraRotation", &m_CameraRotation, -360.f, 360.f);
 
 		ImGui::End();
 	}
@@ -315,7 +323,7 @@ bool GameApp::InitializeScene()
 	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_4_0", &pixelShaderBuffer));
 	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
 		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
-	
+
 
 	/// 2. Render() 에서 파이프라인에 바인딩할 InputLayout 생성
 	// 인풋 레이아웃은 버텍스 쉐이더가 입력받을 데이터의 형식을 지정한다.
@@ -373,6 +381,25 @@ bool GameApp::InitializeScene()
 	sampleDesc.MinLOD = 0;
 	sampleDesc.MaxLOD = D3D11_FLOAT32_MAX;
 	HR_T(m_pDevice->CreateSamplerState(&sampleDesc, &m_pSamplerLinear));
+
+
+	/// blend state 생성
+	D3D11_BLEND_DESC blendDesc = {};
+	blendDesc.AlphaToCoverageEnable = false;
+	blendDesc.IndependentBlendEnable = false;
+	D3D11_RENDER_TARGET_BLEND_DESC rtBlendDesc = {};
+	rtBlendDesc.BlendEnable = true;
+	// FinalRGB = SrcRGB * SrcBlend + DestRGB * DestBlend;
+	rtBlendDesc.BlendOp = D3D11_BLEND_OP_ADD;
+	rtBlendDesc.SrcBlend = D3D11_BLEND_SRC_ALPHA;
+	rtBlendDesc.DestBlend = D3D11_BLEND_INV_SRC_ALPHA;
+	// FinalAlpha = (SrcAlpha * SrcBlendAlpha) + (DestAlpha * DestBlendAlpha)
+	rtBlendDesc.BlendOpAlpha = D3D11_BLEND_OP_ADD;
+	rtBlendDesc.SrcBlendAlpha = D3D11_BLEND_ONE;
+	rtBlendDesc.DestBlendAlpha = D3D11_BLEND_ONE;
+	rtBlendDesc.RenderTargetWriteMask = D3D11_COLOR_WRITE_ENABLE_ALL;
+	blendDesc.RenderTarget[0] = rtBlendDesc;
+	HR_T(m_pDevice->CreateBlendState(&blendDesc, &m_pAlphaBlendState));
 
 	/// 모델 로더 생성
 	m_pModelLoader = new ModelLoader;

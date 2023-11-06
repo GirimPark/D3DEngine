@@ -32,16 +32,13 @@ struct Texture
 
 struct TextureMapConstantBuffer
 {
-	bool UseDiffuse = false;
-	bool UseNormal = false;
-	bool UseSpecular = false;
-	bool UseEmissive = false;
-	bool UseOpacity = false;
-	
-	bool garbage2;
-	bool garbage3;
-	bool garbage4;
-	SimpleMath::Vector2 garbage1;
+	BOOL UseDiffuse = false;
+	BOOL UseNormal = false;
+	BOOL UseSpecular = false;
+	BOOL UseEmissive = false;
+	BOOL UseOpacity = false;
+
+	SimpleMath::Vector3 garbage;
 };
 
 class Mesh
@@ -82,22 +79,22 @@ public:
 				devcon->PSSetShaderResources(0, 1, &texture.texture);
 				TextureMapCB.UseDiffuse = true;
 			}
-			else if (texture.type == "texture_normal")
+			if (texture.type == "texture_normal")
 			{
 				devcon->PSSetShaderResources(1, 1, &texture.texture);
 				TextureMapCB.UseNormal = true;
 			}
-			else if(texture.type == "texture_specular")
+			if(texture.type == "texture_specular")
 			{
 				devcon->PSSetShaderResources(2, 1, &texture.texture);
 				TextureMapCB.UseSpecular = true;
 			}
-			else if (texture.type == "texture_emissive")
+			if (texture.type == "texture_emissive")
 			{
 				devcon->PSSetShaderResources(3, 1, &texture.texture);
 				TextureMapCB.UseEmissive = true;
 			}
-			else if (texture.type == "texture_opacity")
+			if (texture.type == "texture_opacity")
 			{
 				devcon->PSSetShaderResources(4, 1, &texture.texture);
 				TextureMapCB.UseOpacity = true;

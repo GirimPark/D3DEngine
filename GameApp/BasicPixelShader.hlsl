@@ -21,7 +21,7 @@ float4 main(PS_INPUT input) : SV_Target
     {
         normal = normalize(input.Normal);
     }
-
+    
     /// Lighting
     float3 materialColor;
     if(UseDiffuse)
@@ -58,7 +58,29 @@ float4 main(PS_INPUT input) : SV_Target
     float fHDotN = max(0.f, dot(halfVector, normal));
     float3 specularColor = pow(fHDotN, SpecularPower) * LightColor.xyz * specularMapColor;
 
-    float3 finalColor = saturate(ambientColor + diffuseColor + specularColor);
+    // emissive
+    float3 emissiveColor;
+    if(UseEmissive)
+    {
+		emissiveColor = txEmissive.Sample(samLinear, input.Texture).rgb;
+    }
+    else
+    {
+	    emissiveColor = float3(0.f, 0.f, 0.f);
+    }
 
-    return float4(finalColor, 1.f);
+    float3 finalColor = saturate(ambientColor + diffuseColor + specularColor + emissiveColor);
+
+    // opacity
+    float opacityColor;
+    if(UseOpacity)
+    {
+	    opacityColor = txOpacity.Sample(samLinear, input.Texture).a;
+    }
+    else
+    {
+	    opacityColor = 1.f;
+    }
+
+    return float4(finalColor, opacityColor);
 }

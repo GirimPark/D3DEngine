@@ -8,7 +8,11 @@ bool ModelLoader::Load(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* dev
 	Assimp::Importer importer;
 
 	const aiScene* pScene = importer.ReadFile(fileName,
-		aiProcess_Triangulate | aiProcess_ConvertToLeftHanded);
+		aiProcess_Triangulate |
+		aiProcess_GenNormals |
+		aiProcess_GenUVCoords |
+		aiProcess_CalcTangentSpace |
+		aiProcess_ConvertToLeftHanded);
 
 	if (!pScene)
 		return false;
@@ -139,7 +143,9 @@ std::vector<Texture> ModelLoader::LoadMaterialTextures(aiMaterial* material, aiT
 		{
 			if (std::strcmp(texture.path.c_str(), str.C_Str()) == 0)
 			{
-				textures.push_back(texture);
+				Texture temp = texture;
+				temp.type = typeName;
+				textures.push_back(temp);
 				skip = true;
 				break;
 			}
