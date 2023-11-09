@@ -88,8 +88,6 @@ void CommonApp::Run()
             Render();
         }
     }
-
-    Finalize();
 }
 
 void CommonApp::Update()

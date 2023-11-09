@@ -32,6 +32,7 @@ int APIENTRY wWinMain(_In_ HINSTANCE hInstance,
 	GameApp App(hInstance);
 	App.Initialize();
 	App.Run();
+	App.Finalize();
 
 	// Debug Memory Leak Check at end point
 	_CrtSetReportMode(_CRT_WARN, _CRTDBG_MODE_DEBUG);
@@ -101,7 +102,7 @@ void GameApp::Update()
 	m_pModel->Update(m_deltaTime);
 
 	// Model
-	XMMATRIX scale = XMMatrixScaling(10.f, 10.f, 10.f);
+	XMMATRIX scale = XMMatrixScaling(1.f, 1.f, 1.f);
 	XMMATRIX spin = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
 	XMMATRIX translate = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
 	m_WorldModel = scale * spin * translate;
@@ -163,8 +164,7 @@ void GameApp::Render()
 	TCBSun.mProjection = XMMatrixTranspose(m_Projection);
 	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBSun, 0, 0);
 	// Render
-	//m_pModelLoader->Draw(m_pDeviceContext);
-	m_pModel->Render();
+	m_pModel->Render(m_pDeviceContext);
 
 	/// ImGUI
 	ImGui_ImplDX11_NewFrame();
@@ -326,11 +326,11 @@ bool GameApp::InitializeScene()
 
 	/// 버텍스 셰이더, 픽셀 셰이더 생성
 	ID3DBlob* vertexShaderBuffer = nullptr; // 컴파일된 코드에 액세스할 포인터 변수
-	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_4_0", &vertexShaderBuffer));
+	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_5_0", &vertexShaderBuffer));
 	HR_T(m_pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), NULL, &m_pVertexShader));
 	ID3DBlob* pixelShaderBuffer = nullptr;
-	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_4_0", &pixelShaderBuffer));
+	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_5_0", &pixelShaderBuffer));
 	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
 		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
 
@@ -412,9 +412,6 @@ bool GameApp::InitializeScene()
 	HR_T(m_pDevice->CreateBlendState(&blendDesc, &m_pAlphaBlendState));
 
 	/// 모델 로더 생성
-	m_pModelLoader = new ModelLoader;
-	HR_T(m_pModelLoader->Load(m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath));
-
 	m_pModel = new Model{ m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath };
 	m_pModel->Load();
 
@@ -431,12 +428,9 @@ void GameApp::FinalizeScene()
 	SAFE_RELEASE(m_pLightingConstantBuffer);
 	SAFE_RELEASE(m_pSamplerLinear);
 	SAFE_RELEASE(m_pAlphaBlendState);
-	if(m_pModelLoader)
-	{
-		m_pModelLoader->Close();
-		delete m_pModelLoader;
-		m_pModelLoader = nullptr;
-	}
+
+	SAFE_DELETE(m_pModel);
+
 }
 
 bool GameApp::InitializeImGUI()

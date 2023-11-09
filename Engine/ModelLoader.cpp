@@ -43,11 +43,6 @@ void ModelLoader::Close()
 	{
 		texture.Release();
 	}
-
-	for (auto& mesh : m_meshes)
-	{
-		mesh.Finalize();
-	}
 }
 
 void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene)

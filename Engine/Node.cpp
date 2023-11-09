@@ -9,13 +9,30 @@ struct NodeTransformConstantBuffer
 	Matrix mNodeWorld;
 };
 
-Node::Node(ID3D11Device* pDevice, std::string name, Matrix localTransform, const std::vector<Mesh>& meshes)
+Node::Node(ID3D11Device* pDevice, std::string name, Matrix localTransform, const std::vector<Mesh*>& meshes)
 	: m_pDevice(pDevice)
 	, m_name(name)
 	, m_localTransform(localTransform)
 	, m_meshes(meshes)
 {
 	this->SetupNode();
+}
+
+Node::~Node()
+{
+	for (auto& node : m_pChildren)
+	{
+		SAFE_DELETE(node);
+	}
+	m_pChildren.clear();
+
+	for(auto& mesh : m_meshes)
+	{
+		SAFE_DELETE(mesh);
+	}
+	m_meshes.clear();
+
+	SAFE_RELEASE(m_pNodeTransformConstantBuffer);
 }
 
 void Node::Update(float deltaTime)
@@ -54,24 +71,25 @@ void Node::Render(ID3D11DeviceContext* devcon)
 	devcon->VSSetConstantBuffers(3, 1, &m_pNodeTransformConstantBuffer);
 
 	NodeTransformConstantBuffer NTCB;
-	/// m_animatedTransform 들어가야함, test용으로 worldTransform
-	NTCB.mNodeWorld = XMMatrixTranspose(m_worldTransform);
+	if(m_pNodeAnimation)
+	{
+		NTCB.mNodeWorld = XMMatrixTranspose(m_animatedTransform);
+	}
+	else
+	{
+		NTCB.mNodeWorld = XMMatrixTranspose(m_worldTransform);
+	}
 	devcon->UpdateSubresource(m_pNodeTransformConstantBuffer, 0, nullptr, &NTCB, 0, 0);
 
 	for(auto& mesh : m_meshes)
 	{
-		mesh.Render(devcon);
+		mesh->Render(devcon);
 	}
 
 	for (const auto& child : m_pChildren)
 	{
 		child->Render(devcon);
 	}
-}
-
-void Node::Finalize()
-{
-	SAFE_RELEASE(m_pNodeTransformConstantBuffer);
 }
 
 void Node::SetupNode()

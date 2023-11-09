@@ -38,7 +38,6 @@ public:
 	ID3D11BlendState* m_pAlphaBlendState = nullptr;		// ºí·»´õ »óÅÂ
 
 	// ¸ðµ¨ ·Î´õ
-	ModelLoader* m_pModelLoader = nullptr;
 	Model* m_pModel = nullptr;
 	std::string m_ModelPath = "../Resources/FBX/BoxHuman.fbx";
 

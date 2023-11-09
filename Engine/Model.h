@@ -33,15 +33,15 @@ private:
 
 public:
 	Model(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon, std::string fileName);
+	~Model();
 
 	void Load();
 	void Update(float deltaTime);
-	void Render();
-	void Finalize();
+	void Render(ID3D11DeviceContext* devcon);
 
 private:
 	void ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene);
-	Mesh ParsingMesh(aiMesh* mesh, const aiScene* pScene);
+	Mesh* ParsingMesh(aiMesh* mesh, const aiScene* pScene);
 	bool ParsingAnimation(const aiScene* pScene);
 	std::vector<NodeAnimation*> ParsingNodeAnimation(aiAnimation* pAnimation);
 	std::vector<FrameKey> ParsingFrameKey(aiNodeAnim* pNodeAnim);

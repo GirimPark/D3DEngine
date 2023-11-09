@@ -56,10 +56,10 @@ private:
 
 public:
 	Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, const std::vector<Texture>& textures);
+	~Mesh();
 
 public:
 	void Render(ID3D11DeviceContext* devcon);
-	void Finalize();
 
 private:
 	void SetupMesh();

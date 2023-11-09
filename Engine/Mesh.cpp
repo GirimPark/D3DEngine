@@ -13,6 +13,22 @@ Mesh::Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std:
 	this->SetupMesh();
 }
 
+Mesh::~Mesh()
+{
+	SAFE_RELEASE(m_pVertexBuffer);
+	SAFE_RELEASE(m_pIndexBuffer);
+	SAFE_RELEASE(m_pTextureMapConstantBuffer);
+
+	m_vertices.clear();
+	m_indices.clear();
+
+	for (auto& texture : m_textures)
+	{
+		texture.Release();
+	}
+	m_textures.clear();
+}
+
 void Mesh::Render(ID3D11DeviceContext* devcon)
 {
 	TextureMapConstantBuffer TextureMapCB;
@@ -55,22 +71,6 @@ void Mesh::Render(ID3D11DeviceContext* devcon)
 	devcon->UpdateSubresource(m_pTextureMapConstantBuffer, 0, nullptr, &TextureMapCB, 0, 0);
 
 	devcon->DrawIndexed(static_cast<UINT>(m_indices.size()), 0, 0);
-}
-
-void Mesh::Finalize()
-{
-	SAFE_RELEASE(m_pVertexBuffer);
-	SAFE_RELEASE(m_pIndexBuffer);
-	SAFE_RELEASE(m_pTextureMapConstantBuffer);
-
-	m_vertices.clear();
-	m_indices.clear();
-
-	for(auto& texture:m_textures)
-	{
-		texture.Release();
-	}
-	m_textures.clear();
 }
 
 void Mesh::SetupMesh()

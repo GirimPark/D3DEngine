@@ -18,7 +18,7 @@ private:
 	Matrix m_worldTransform;
 	NodeAnimation* m_pNodeAnimation;
 	int m_curIdx = 0;
-	std::vector<Mesh> m_meshes;
+	std::vector<Mesh*> m_meshes;
 
 	ID3D11Device* m_pDevice;
 	ID3D11Buffer* m_pNodeTransformConstantBuffer = nullptr;
@@ -33,7 +33,8 @@ public:
 	}
 
 public:
-	Node(ID3D11Device* pDevice, std::string name, Matrix localTransform, const std::vector<Mesh>& meshes);
+	Node(ID3D11Device* pDevice, std::string name, Matrix localTransform, const std::vector<Mesh*>& meshes);
+	~Node();
 
 public:
 	void SetAnimation(NodeAnimation* pNodeAnimation) { this->m_pNodeAnimation = pNodeAnimation; }
@@ -43,7 +44,6 @@ public:
 public:
 	void Update(float deltaTime);
 	void Render(ID3D11DeviceContext* devcon);
-	void Finalize();
 
 private:
 	void SetupNode();

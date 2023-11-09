@@ -21,6 +21,17 @@ Model::Model(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon, std
 	
 }
 
+Model::~Model()
+{
+	for (auto& animation : m_pAnimations)
+	{
+		SAFE_DELETE(animation);
+	}
+	m_pAnimations.clear();
+
+	SAFE_DELETE(m_pRootNode);
+}
+
 void Model::Load()
 {
 	const aiScene* pScene = m_Importer.ReadFile(m_fileName,
@@ -34,7 +45,10 @@ void Model::Load()
 
 	ParsingNode(pScene->mRootNode, m_pRootNode, pScene);
 	m_bAnimation = ParsingAnimation(pScene);
-	AssignAnimation(m_pRootNode);
+	if(m_bAnimation)
+	{
+		AssignAnimation(m_pRootNode);
+	}
 }
 
 void Model::Update(float deltaTime)
@@ -42,19 +56,14 @@ void Model::Update(float deltaTime)
 	m_pRootNode->Update(deltaTime);
 }
 
-void Model::Render()
+void Model::Render(ID3D11DeviceContext* devcon)
 {
-	m_pRootNode->Render(m_pDeviceContext);
-}
-
-void Model::Finalize()
-{
-	
+	m_pRootNode->Render(devcon);
 }
 
 void Model::ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene)
 {
-	std::vector<Mesh> meshes;
+	std::vector<Mesh*> meshes;
 	for(UINT i = 0; i<pNode->mNumMeshes; ++i)
 	{
 		aiMesh* pMesh = pScene->mMeshes[pNode->mMeshes[i]];
@@ -78,7 +87,7 @@ void Model::ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene)
 	}
 }
 
-Mesh Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
+Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 {
 	std::vector<Vertex> vertices;
 	std::vector<UINT> indices;
@@ -140,7 +149,7 @@ Mesh Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 		textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
 	}
 	
-	return Mesh{ m_pDevice, vertices, indices, textures };
+	return new Mesh{ m_pDevice, vertices, indices, textures };
 }
 
 bool Model::ParsingAnimation(const aiScene* pScene)
