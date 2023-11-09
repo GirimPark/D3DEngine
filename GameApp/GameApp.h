@@ -7,6 +7,7 @@
 #include <directxtk/SimpleMath.h>
 
 class ModelLoader;
+class Model;
 using namespace DirectX::SimpleMath;
 
 class GameApp :
@@ -15,6 +16,10 @@ class GameApp :
 public:
 	GameApp(HINSTANCE hInstance);
 	~GameApp() = default;
+
+	float m_previousTime;
+	float m_currentTime;
+	float m_deltaTime;
 
 	// 렌더링 파이프라인을 구성하는 필수 객체의 인터페이스 ( 뎊스 스텐실 뷰도 있지만 아직 사용하지 않는다.)
 	ID3D11Device* m_pDevice = nullptr;						// 디바이스	
@@ -34,7 +39,8 @@ public:
 
 	// 모델 로더
 	ModelLoader* m_pModelLoader = nullptr;
-	std::string m_ModelPath = "../Resources/FBX/character.fbx";
+	Model* m_pModel = nullptr;
+	std::string m_ModelPath = "../Resources/FBX/BoxHuman.fbx";
 
 	// 상수 버퍼를 통해 전달할 변환 정보
 	// 위치 상수 버퍼

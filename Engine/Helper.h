@@ -1,8 +1,10 @@
 #pragma once
 #include <wchar.h>
 #include <d3d11.h>
+#include <DirectXMath.h>
 #include <exception>
 #include <stdio.h>
+#include <assimp/matrix4x4.h>
 
 #define LOG_ERROR(...) \
 { \
@@ -85,6 +87,16 @@ inline void HR_T(HRESULT hr)
 	}
 }
 
+
+inline DirectX::XMMATRIX ConvertaiMatrixToXMMatrix(const aiMatrix4x4 aiMatrix)
+{
+	DirectX::XMMATRIX xmMatrix;
+	xmMatrix.r[0] = DirectX::XMVectorSet(aiMatrix.a1, aiMatrix.a2, aiMatrix.a3, aiMatrix.a4);
+	xmMatrix.r[1] = DirectX::XMVectorSet(aiMatrix.b1, aiMatrix.b2, aiMatrix.b3, aiMatrix.b4);
+	xmMatrix.r[2] = DirectX::XMVectorSet(aiMatrix.c1, aiMatrix.c2, aiMatrix.c3, aiMatrix.c4);
+	xmMatrix.r[3] = DirectX::XMVectorSet(aiMatrix.d1, aiMatrix.d2, aiMatrix.d3, aiMatrix.d4);
+	return xmMatrix;
+}
 
 LPCWSTR GetComErrorString(HRESULT hr);
 

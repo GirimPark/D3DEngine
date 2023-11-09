@@ -2,6 +2,7 @@
 #include "GameApp.h"
 
 #include "../Engine/ModelLoader.h"
+#include "../Engine/Model.h"
 
 #include <directxtk/SimpleMath.h>
 #include <imgui.h>
@@ -85,16 +86,25 @@ bool GameApp::Initialize()
 		return false;
 	}
 
+	m_previousTime = GetTickCount64();
+	m_currentTime = GetTickCount64();
+
 	return true;
 }
 
 void GameApp::Update()
 {
+	m_previousTime = m_currentTime;
+	m_currentTime = GetTickCount64();
+	m_deltaTime = m_currentTime - m_previousTime;
+
+	m_pModel->Update(m_deltaTime);
+
 	// Model
-	XMMATRIX scale = XMMatrixScaling(100.f, 100.f, 100.f);
+	XMMATRIX scale = XMMatrixScaling(10.f, 10.f, 10.f);
 	XMMATRIX spin = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
 	XMMATRIX translate = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
-	m_WorldModel = spin * translate;
+	m_WorldModel = scale * spin * translate;
 
 	// Camera
 	//XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
@@ -153,8 +163,8 @@ void GameApp::Render()
 	TCBSun.mProjection = XMMatrixTranspose(m_Projection);
 	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBSun, 0, 0);
 	// Render
-	m_pModelLoader->Draw(m_pDeviceContext);
-
+	//m_pModelLoader->Draw(m_pDeviceContext);
+	m_pModel->Render();
 
 	/// ImGUI
 	ImGui_ImplDX11_NewFrame();
@@ -404,6 +414,9 @@ bool GameApp::InitializeScene()
 	/// 모델 로더 생성
 	m_pModelLoader = new ModelLoader;
 	HR_T(m_pModelLoader->Load(m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath));
+
+	m_pModel = new Model{ m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath };
+	m_pModel->Load();
 
 	return true;
 }

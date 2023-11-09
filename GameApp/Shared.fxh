@@ -35,6 +35,11 @@ cbuffer TexturingBuffer : register(b2)
     bool UseOpacity;
 }
 
+cbuffer NodeTransformBuffer : register(b3)
+{
+    matrix NodeWorld;
+}
+
 //--------------------------------------------------------------------------------------
 struct VS_INPUT
 {

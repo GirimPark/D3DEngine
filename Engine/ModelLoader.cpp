@@ -2,6 +2,8 @@
 #include "ModelLoader.h"
 
 #include <directxtk/WICTextureLoader.h>
+#include <fstream>
+#include <string>
 
 bool ModelLoader::Load(HWND hwnd, ID3D11Device* device, ID3D11DeviceContext* devcon, std::string fileName)
 {
@@ -31,7 +33,7 @@ void ModelLoader::Draw(ID3D11DeviceContext* devcon)
 {
 	for (auto& mesh : m_meshes)
 	{
-		mesh.Draw(devcon);
+		mesh.Render(devcon);
 	}
 }
 
@@ -44,7 +46,7 @@ void ModelLoader::Close()
 
 	for (auto& mesh : m_meshes)
 	{
-		mesh.Close();
+		mesh.Finalize();
 	}
 }
 
@@ -53,7 +55,6 @@ void ModelLoader::ProcessNode(aiNode* node, const aiScene* scene)
 	for (UINT i = 0; i<node->mNumMeshes; ++i)
 	{
 		aiMesh* mesh = scene->mMeshes[node->mMeshes[i]];
-		//node->mTransformation;
 		m_meshes.push_back(this->ProcessMesh(mesh, scene));
 	}
 
@@ -78,22 +79,22 @@ Mesh ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 
 		if (mesh->mTextureCoords[0])
 		{
-			vertex.texture.x = mesh->mTextureCoords[0][i].x;
-			vertex.texture.y = mesh->mTextureCoords[0][i].y;
+			vertex.UV.x = mesh->mTextureCoords[0][i].x;
+			vertex.UV.y = mesh->mTextureCoords[0][i].y;
 		}
 
 		if(mesh->HasNormals())
 		{
-			vertex.normal.x = mesh->mNormals[i].x;
-			vertex.normal.y = mesh->mNormals[i].y;
-			vertex.normal.z = mesh->mNormals[i].z;
+			vertex.Normal.x = mesh->mNormals[i].x;
+			vertex.Normal.y = mesh->mNormals[i].y;
+			vertex.Normal.z = mesh->mNormals[i].z;
 		}
 
 		if(mesh->HasTangentsAndBitangents())
 		{
-			vertex.tangent.x = mesh->mTangents[i].x;
-			vertex.tangent.y = mesh->mTangents[i].y;
-			vertex.tangent.z = mesh->mTangents[i].z;
+			vertex.Tangent.x = mesh->mTangents[i].x;
+			vertex.Tangent.y = mesh->mTangents[i].y;
+			vertex.Tangent.z = mesh->mTangents[i].z;
 		}
 
 		vertices.push_back(vertex);
@@ -128,24 +129,23 @@ Mesh ModelLoader::ProcessMesh(aiMesh* mesh, const aiScene* scene)
 	return Mesh(m_device, vertices, indices, textures);
 }
 
-std::vector<Texture> ModelLoader::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName,
+const std::vector<Texture>& ModelLoader::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName,
 	const aiScene* scene)
 {
 	std::vector<Texture> textures;
 
 	for (UINT i = 0; i < material->GetTextureCount(type); ++i)
 	{
-		// TODO : 파일 경로 다듬기
 		aiString str;
 		material->GetTexture(type, i, &str);
 
 		bool skip = false;
 		for (const auto& texture : m_loadedTextures)
 		{
-			if (std::strcmp(texture.path.c_str(), str.C_Str()) == 0)
+			if (std::strcmp(texture.Path.c_str(), str.C_Str()) == 0)
 			{
 				Texture temp = texture;
-				temp.type = typeName;
+				temp.Type = typeName;
 				textures.push_back(temp);
 				skip = true;
 				break;
@@ -156,21 +156,27 @@ std::vector<Texture> ModelLoader::LoadMaterialTextures(aiMaterial* material, aiT
 			Texture texture;
 
 			const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
-			if (embeddedTexture)
+
+			std::string fileName = std::string(str.C_Str());
+			if(std::string::npos != fileName.find_last_of("/\\"))
 			{
-				texture.texture = LoadEmbeddedTexture(embeddedTexture);
+				fileName = "../Textures/" + fileName.substr(fileName.find_last_of("/\\"));
 			}
 			else
 			{
-				std::string fileName = std::string(str.C_Str());
-				fileName = "../Textures/"+fileName.substr(fileName.find_last_of("/\\"));
-				fileName = m_directory + '/' + fileName;
-				std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
-				HR_T(CreateWICTextureFromFile(m_device, m_deviceContext, fileNameWs.c_str(), nullptr, &texture.texture));
+				fileName = "../Textures/" + fileName;
 			}
+			fileName = m_directory + '/' + fileName;
+			if(embeddedTexture)
+			{
+				bool result = SaveEmbeddedTexture(embeddedTexture, fileName);
+				assert(result);
+			}
+			std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
+			HR_T(CreateWICTextureFromFile(m_device, m_deviceContext, fileNameWs.c_str(), nullptr, &texture.Source));
 
-			texture.type = typeName;
-			texture.path = str.C_Str();
+			texture.Type = typeName;
+			texture.Path = str.C_Str();
 			textures.push_back(texture);
 			this->m_loadedTextures.push_back(texture);
 		}
@@ -213,4 +219,24 @@ ID3D11ShaderResourceView* ModelLoader::LoadEmbeddedTexture(const aiTexture* embe
 	const size_t size = embeddedTexture->mWidth;
 	HR_T(CreateWICTextureFromMemory(m_device, m_deviceContext, reinterpret_cast<const unsigned char*>(embeddedTexture->pcData), size, nullptr, &texture));
 	return texture;
+}
+
+bool ModelLoader::SaveEmbeddedTexture(const aiTexture* embeddedTexture, std::string fileName)
+{
+	if(!embeddedTexture->mHeight)
+	{
+		// Save a compressed texture of mWidth bytes
+		std::ofstream file(fileName.c_str(), std::ios::binary);
+		file.write(reinterpret_cast<const char*>(embeddedTexture->pcData), embeddedTexture->mWidth);
+		file.close();
+	}
+	else
+	{
+		// Save an uncompressed ARGB8888 embedded texture
+		std::ofstream file(fileName.c_str(), std::ios::binary);
+		file.write(reinterpret_cast<const char*>(embeddedTexture->pcData), embeddedTexture->mWidth * embeddedTexture->mHeight * 4);
+		file.close();
+	}
+
+	return true;
 }
