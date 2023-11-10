@@ -51,10 +51,11 @@ void Node::Update(float deltaTime)
 	{
 		m_animationSpeed = m_pOwner->GetAnimationSpeed();
 		m_elapsedTime += (deltaTime * m_animationSpeed);
-
-		if (m_elapsedTime > m_pNodeAnimation->Frames[m_curIdx].FrameTime)
+		
+		int nextIdx = (m_curIdx + 1) % (m_pNodeAnimation->Frames.size());
+		if (m_elapsedTime > m_pNodeAnimation->Frames[nextIdx].FrameTime)
 		{
-			m_curIdx = (m_curIdx + 1) % (m_pNodeAnimation->Frames.size());
+			m_curIdx = nextIdx;
 			if (m_curIdx == 0)
 			{
 				m_elapsedTime = 0.f;
@@ -63,7 +64,7 @@ void Node::Update(float deltaTime)
 		Vector3 prePosition = m_pNodeAnimation->Frames[m_curIdx].FramePosition;
 		Vector3 preScale = m_pNodeAnimation->Frames[m_curIdx].FrameScale;
 		Quaternion preQuaternion = m_pNodeAnimation->Frames[m_curIdx].FrameQuaternion;
-		int nextIdx = (m_curIdx + 1) % (m_pNodeAnimation->Frames.size());
+		nextIdx = (m_curIdx + 1) % (m_pNodeAnimation->Frames.size());
 		Vector3 nextPosition = m_pNodeAnimation->Frames[nextIdx].FramePosition;
 		Vector3 nextScale = m_pNodeAnimation->Frames[nextIdx].FrameScale;
 		Quaternion nextQuaternion = m_pNodeAnimation->Frames[nextIdx].FrameQuaternion;
