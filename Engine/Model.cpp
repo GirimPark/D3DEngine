@@ -61,6 +61,17 @@ void Model::Render(ID3D11DeviceContext* devcon)
 	m_pRootNode->Render(devcon);
 }
 
+DirectX::XMMATRIX Model::GetTransform()
+{
+	return m_pRootNode->GetWorldTransform();
+}
+
+void Model::SetTransform(DirectX::XMMATRIX transform)
+{
+	m_pRootNode->SetWorldTransform(transform);
+}
+
+
 void Model::ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene)
 {
 	std::vector<Mesh*> meshes;
@@ -70,7 +81,7 @@ void Model::ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene)
 		meshes.push_back(this->ParsingMesh(pMesh, pScene));
 	}
 
-	Node* newNode = new Node{ m_pDevice, pNode->mName.C_Str(), ConvertaiMatrixToXMMatrix(pNode->mTransformation), meshes };
+	Node* newNode = new Node{ m_pDevice, pNode->mName.C_Str(), this, ConvertaiMatrixToXMMatrix(pNode->mTransformation), meshes };
 	if(pNode == pScene->mRootNode)
 	{
 		m_pRootNode = newNode;
@@ -161,7 +172,8 @@ bool Model::ParsingAnimation(const aiScene* pScene)
 	{
 		Animation* animation = new Animation;
 		animation->AnimationName = (pScene->mAnimations[i]->mName).C_Str();
-		animation->AnimationDuration = m_curAnimationDuration = (pScene->mAnimations[i]->mDuration);
+		m_tickPerSecond = static_cast<float>(pScene->mAnimations[i]->mTicksPerSecond);
+		animation->AnimationDuration = m_curAnimationDuration = (pScene->mAnimations[i]->mDuration) / m_tickPerSecond;
 		animation->NodeAnimations = ParsingNodeAnimation(pScene->mAnimations[i]);
 
 		m_pAnimations.push_back(animation);
@@ -191,26 +203,20 @@ std::vector<FrameKey> Model::ParsingFrameKey(aiNodeAnim* pNodeAnim)
 	{
 		FrameKey frame;
 
-		Vector3 position;
-		position.x = pNodeAnim->mPositionKeys[i].mValue.x;
-		position.y = pNodeAnim->mPositionKeys[i].mValue.y;
-		position.z = pNodeAnim->mPositionKeys[i].mValue.z;
-		Vector3 scaling;
-		scaling.x = pNodeAnim->mScalingKeys[i].mValue.x;
-		scaling.y = pNodeAnim->mScalingKeys[i].mValue.y;
-		scaling.z = pNodeAnim->mScalingKeys[i].mValue.z;
-		Quaternion rotation;
-		rotation.x = pNodeAnim->mRotationKeys[i].mValue.x;
-		rotation.y = pNodeAnim->mRotationKeys[i].mValue.y;
-		rotation.z = pNodeAnim->mRotationKeys[i].mValue.z;
-		rotation.w = pNodeAnim->mRotationKeys[i].mValue.w;
-		frame.FrameTransform = Matrix::CreateScale(scaling) * Matrix::CreateFromQuaternion(rotation) * Matrix::CreateTranslation(position);
+		frame.FramePosition.x = pNodeAnim->mPositionKeys[i].mValue.x;
+		frame.FramePosition.y = pNodeAnim->mPositionKeys[i].mValue.y;
+		frame.FramePosition.z = pNodeAnim->mPositionKeys[i].mValue.z;
 
-		// TODO : 마지막 프레임 흠... 애니메이션 지속시간 다시 확인해보기
-		if (i < (pNodeAnim->mNumPositionKeys - 1))
-			frame.FrameDuration = pNodeAnim->mPositionKeys[i + 1].mTime - pNodeAnim->mPositionKeys[i].mTime;
-		else
-			frame.FrameDuration = m_curAnimationDuration - pNodeAnim->mPositionKeys[i].mTime;
+		frame.FrameScale.x = pNodeAnim->mScalingKeys[i].mValue.x;
+		frame.FrameScale.y = pNodeAnim->mScalingKeys[i].mValue.y;
+		frame.FrameScale.z = pNodeAnim->mScalingKeys[i].mValue.z;
+
+		frame.FrameQuaternion.x = pNodeAnim->mRotationKeys[i].mValue.x;
+		frame.FrameQuaternion.y = pNodeAnim->mRotationKeys[i].mValue.y;
+		frame.FrameQuaternion.z = pNodeAnim->mRotationKeys[i].mValue.z;
+		frame.FrameQuaternion.w = pNodeAnim->mRotationKeys[i].mValue.w;
+		
+		frame.FrameTime = pNodeAnim->mPositionKeys[i].mTime / m_tickPerSecond;
 
 		frames.push_back(frame);
 	}
@@ -252,6 +258,7 @@ std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* material, aiTexture
 			{
 				Texture temp = texture;
 				temp.Type = typeName;
+				temp.Source->AddRef();
 				textures.push_back(temp);
 				skip = true;
 				break;

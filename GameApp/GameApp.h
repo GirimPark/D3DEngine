@@ -17,8 +17,9 @@ public:
 	GameApp(HINSTANCE hInstance);
 	~GameApp() = default;
 
-	float m_previousTime;
-	float m_currentTime;
+	LARGE_INTEGER m_frequency;
+	LARGE_INTEGER m_previousTime;
+	LARGE_INTEGER m_currentTime;
 	float m_deltaTime;
 
 	// 렌더링 파이프라인을 구성하는 필수 객체의 인터페이스 ( 뎊스 스텐실 뷰도 있지만 아직 사용하지 않는다.)
@@ -63,6 +64,7 @@ public:
 	FLOAT m_CameraRotation = 0.f;
 	FLOAT m_ModelYAW = 0.f;
 	FLOAT m_ModelPitch = 0.f;
+	FLOAT m_AnimationSpeed = 1.f;
 	
 	bool Initialize() final;
 	void Update() final;

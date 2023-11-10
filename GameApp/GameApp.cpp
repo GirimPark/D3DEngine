@@ -1,7 +1,6 @@
 ﻿#include "framework.h"
 #include "GameApp.h"
 
-#include "../Engine/ModelLoader.h"
 #include "../Engine/Model.h"
 
 #include <directxtk/SimpleMath.h>
@@ -87,8 +86,9 @@ bool GameApp::Initialize()
 		return false;
 	}
 
-	m_previousTime = GetTickCount64();
-	m_currentTime = GetTickCount64();
+	QueryPerformanceFrequency(&m_frequency);
+	QueryPerformanceCounter(&m_previousTime);
+	QueryPerformanceCounter(&m_currentTime);
 
 	return true;
 }
@@ -96,16 +96,22 @@ bool GameApp::Initialize()
 void GameApp::Update()
 {
 	m_previousTime = m_currentTime;
-	m_currentTime = GetTickCount64();
-	m_deltaTime = m_currentTime - m_previousTime;
+	QueryPerformanceCounter(&m_currentTime);
+	m_deltaTime = static_cast<float>(m_currentTime.QuadPart - m_previousTime.QuadPart) / static_cast<float>(m_frequency.QuadPart);
 
-	m_pModel->Update(m_deltaTime);
+#ifdef _DEBUG
+	if (m_deltaTime > (1.f / 60.f))
+		m_deltaTime = (1.f / 60.f);
+#endif
 
 	// Model
 	XMMATRIX scale = XMMatrixScaling(1.f, 1.f, 1.f);
 	XMMATRIX spin = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
 	XMMATRIX translate = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
 	m_WorldModel = scale * spin * translate;
+	m_pModel->SetTransform(m_WorldModel);
+	m_pModel->SetAnimationSpeed(m_AnimationSpeed);
+	m_TranslateModel = Vector3(m_WorldModel._41, m_WorldModel._42, m_WorldModel._43);
 
 	// Camera
 	//XMVECTOR Eye = XMVectorSet(m_TranslateCamera.x, m_TranslateCamera.y, m_TranslateCamera.z, 0.f);
@@ -121,6 +127,8 @@ void GameApp::Update()
 	m_View = XMMatrixLookAtLH(Eye, At, Up);
 
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
+
+	m_pModel->Update(m_deltaTime);
 
 	__super::Update();
 }
@@ -181,7 +189,7 @@ void GameApp::Render()
 		ImGui::SliderFloat("Far", &m_FarZ, 100.f, 10000.f);
 		ImGui::SliderFloat("ModelYAW", &m_ModelYAW, -360.f, 360.f);
 		ImGui::SliderFloat("ModelPitch", &m_ModelPitch, -360.f, 360.f);
-		//ImGui::SliderFloat("CameraRotation", &m_CameraRotation, -360.f, 360.f);
+		ImGui::SliderFloat("AnimationSpeed", &m_AnimationSpeed, 0.1f, 2.f);
 
 		ImGui::End();
 	}

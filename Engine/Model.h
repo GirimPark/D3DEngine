@@ -1,9 +1,13 @@
 #pragma once
 
 #include <d3d11_1.h>
+#include <DirectXMath.h>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <vector>
+
+#include "Animation.h"
+
 
 struct FrameKey;
 struct NodeAnimation;
@@ -20,6 +24,7 @@ private:
 	int m_curAnimationIdx = 0;
 	bool m_bAnimation;
 	float m_curAnimationDuration;	// 마지막 프레임 지속시간 계산을 위한 임시 변수
+	float m_tickPerSecond;
 
 	ID3D11Device* m_pDevice = nullptr;
 	ID3D11DeviceContext* m_pDeviceContext = nullptr;
@@ -38,6 +43,13 @@ public:
 	void Load();
 	void Update(float deltaTime);
 	void Render(ID3D11DeviceContext* devcon);
+
+public:
+	DirectX::XMMATRIX GetTransform();
+	void SetTransform(DirectX::XMMATRIX transform);
+	void SetAnimationSpeed(float speed) { m_pAnimations[m_curAnimationIdx]->AnimationSpeed = speed; }
+	float GetAnimationSpeed() { return m_pAnimations[m_curAnimationIdx]->AnimationSpeed; }
+	float GetAnimationDuration() { return m_pAnimations[m_curAnimationDuration]->AnimationDuration; }
 
 private:
 	void ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene);

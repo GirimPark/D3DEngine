@@ -14,8 +14,10 @@ class Model;
 
 struct FrameKey
 {
-	Matrix FrameTransform;
-	float FrameDuration;
+	Vector3 FramePosition;
+	Vector3 FrameScale;
+	Quaternion FrameQuaternion;
+	float FrameTime;
 };
 
 struct NodeAnimation
@@ -34,6 +36,7 @@ struct Animation
 	std::string	AnimationName;
 	float AnimationDuration;
 	std::vector<NodeAnimation*> NodeAnimations;
+	float AnimationSpeed = 1.f;
 
 	~Animation()
 	{
