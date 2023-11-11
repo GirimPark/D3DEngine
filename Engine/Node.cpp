@@ -61,32 +61,23 @@ void Node::Update(float deltaTime)
 				m_elapsedTime = 0.f;
 			}
 		}
+
+		nextIdx = (m_curIdx + 1) % (m_pNodeAnimation->Frames.size());
 		Vector3 prePosition = m_pNodeAnimation->Frames[m_curIdx].FramePosition;
 		Vector3 preScale = m_pNodeAnimation->Frames[m_curIdx].FrameScale;
 		Quaternion preQuaternion = m_pNodeAnimation->Frames[m_curIdx].FrameQuaternion;
-		nextIdx = (m_curIdx + 1) % (m_pNodeAnimation->Frames.size());
 		Vector3 nextPosition = m_pNodeAnimation->Frames[nextIdx].FramePosition;
 		Vector3 nextScale = m_pNodeAnimation->Frames[nextIdx].FrameScale;
 		Quaternion nextQuaternion = m_pNodeAnimation->Frames[nextIdx].FrameQuaternion;
 
-		float t;
-		if (nextIdx != 0)
-		{
-			t = (m_elapsedTime - m_pNodeAnimation->Frames[m_curIdx].FrameTime) /
-				((m_pNodeAnimation->Frames[nextIdx].FrameTime) - (m_pNodeAnimation->Frames[m_curIdx].FrameTime));
-		}
-		else
-		{
-			t = (m_elapsedTime - m_pNodeAnimation->Frames[m_curIdx].FrameTime) /
-				((m_pNodeAnimation->Frames[m_curIdx].FrameTime) - (m_pNodeAnimation->Frames[nextIdx].FrameTime));
-		}
+		float t = (m_elapsedTime - m_pNodeAnimation->Frames[m_curIdx].FrameTime) /
+			((m_pNodeAnimation->Frames[nextIdx].FrameTime) - (m_pNodeAnimation->Frames[m_curIdx].FrameTime));
 
 		Vector3 position = Vector3::Lerp(prePosition, nextPosition, t);
 		Vector3 scale = Vector3::Lerp(preScale, nextScale, t);
 		Quaternion quaternion = Quaternion::Slerp(preQuaternion, nextQuaternion, t);
 
 		m_localTransform = Matrix::CreateScale(scale) * Matrix::CreateFromQuaternion(quaternion) * Matrix::CreateTranslation(position);
-		
 	}
 
 	UpdateTransform();
