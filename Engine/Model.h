@@ -9,6 +9,7 @@
 #include "Animation.h"
 
 
+struct Vertex;
 struct FrameKey;
 struct NodeAnimation;
 struct Texture;
@@ -34,8 +35,6 @@ private:
 
 	std::vector<Texture> m_loadedTextures;
 
-	Assimp::Importer m_Importer;
-
 public:
 	Model(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon, std::string fileName);
 	~Model();
@@ -54,6 +53,7 @@ public:
 private:
 	void ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene);
 	Mesh* ParsingMesh(aiMesh* mesh, const aiScene* pScene);
+	void ProcessBoneInfo(aiMesh* mesh, Vertex vertex);
 	bool ParsingAnimation(const aiScene* pScene);
 	std::vector<NodeAnimation*> ParsingNodeAnimation(aiAnimation* pAnimation);
 	std::vector<FrameKey> ParsingFrameKey(aiNodeAnim* pNodeAnim);

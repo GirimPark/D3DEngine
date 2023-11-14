@@ -47,6 +47,8 @@ struct VS_INPUT
     float2 Texture : TEXTURE;
     float3 Normal : NORMAL;
     float3 Tangent : TANGENT;
+    int4 BlendIndices : BLENDINDICES;
+    float4 BlendWeights : BLENDWEIGHTS;
 };
 
 struct PS_INPUT

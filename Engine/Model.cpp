@@ -34,11 +34,13 @@ Model::~Model()
 
 void Model::Load()
 {
-	const aiScene* pScene = m_Importer.ReadFile(m_fileName,
+	Assimp::Importer importer;
+	const aiScene* pScene = importer.ReadFile(m_fileName,
 		aiProcess_Triangulate |
 		aiProcess_GenNormals |
 		aiProcess_GenUVCoords |
 		aiProcess_CalcTangentSpace |
+		aiProcess_LimitBoneWeights |
 		aiProcess_ConvertToLeftHanded);
 
 	assert(pScene);
@@ -131,6 +133,11 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 			vertex.Tangent.z = mesh->mTangents[i].z;
 		}
 
+		if(mesh->HasBones())
+		{
+			ProcessBoneInfo(mesh, vertex);
+		}
+
 		vertices.push_back(vertex);
 	}
 
@@ -161,6 +168,11 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 	}
 	
 	return new Mesh{ m_pDevice, vertices, indices, textures };
+}
+
+void Model::ProcessBoneInfo(aiMesh* mesh, Vertex vertex)
+{
+	
 }
 
 bool Model::ParsingAnimation(const aiScene* pScene)

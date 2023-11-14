@@ -16,6 +16,24 @@ struct Vertex
 	XMFLOAT2 UV;
 	XMFLOAT3 Normal;
 	XMFLOAT3 Tangent;
+	INT BlendIndices[4] = {};
+	float BlendWeights[4] = {};
+
+	void AddBoneData(int boneIndex, float weight)
+	{
+		// 데이터가 하나는 비어있어야 한다
+		assert(BlendWeights[0] == 0.f || BlendWeights[1] == 0.f
+			|| BlendWeights[2] == 0.f || BlendWeights[3] == 0.f);
+		for(UINT i = 0; i<4; ++i)
+		{
+			if(BlendWeights[i]==0.f)
+			{
+				BlendIndices[i] = boneIndex;
+				BlendWeights[i] = weight;
+				return;
+			}
+		}
+	}
 };
 
 struct Texture
