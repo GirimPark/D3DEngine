@@ -40,7 +40,7 @@ public:
 
 	// 모델 로더
 	Model* m_pModel = nullptr;
-	std::string m_ModelPath = "../Resources/FBX/BoxHuman.fbx";
+	std::string m_ModelPath = "../Resources/FBX/SkinningTest.fbx";
 
 	// 상수 버퍼를 통해 전달할 변환 정보
 	// 위치 상수 버퍼

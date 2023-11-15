@@ -24,7 +24,6 @@ private:
 	std::vector<Animation*> m_pAnimations;
 	int m_curAnimationIdx = 0;
 	bool m_bAnimation;
-	float m_curAnimationDuration;	// 마지막 프레임 지속시간 계산을 위한 임시 변수
 	float m_tickPerSecond;
 
 	ID3D11Device* m_pDevice = nullptr;
@@ -53,7 +52,7 @@ public:
 private:
 	void ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene);
 	Mesh* ParsingMesh(aiMesh* mesh, const aiScene* pScene);
-	void ProcessBoneInfo(aiMesh* mesh, Vertex vertex);
+	void ProcessBoneInfo(aiMesh* mesh, Vertex* vertex);
 	bool ParsingAnimation(const aiScene* pScene);
 	std::vector<NodeAnimation*> ParsingNodeAnimation(aiAnimation* pAnimation);
 	std::vector<FrameKey> ParsingFrameKey(aiNodeAnim* pNodeAnim);

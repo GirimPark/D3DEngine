@@ -35,6 +35,7 @@ Model::~Model()
 void Model::Load()
 {
 	Assimp::Importer importer;
+	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
 	const aiScene* pScene = importer.ReadFile(m_fileName,
 		aiProcess_Triangulate |
 		aiProcess_GenNormals |
@@ -82,7 +83,7 @@ void Model::ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene)
 		aiMesh* pMesh = pScene->mMeshes[pNode->mMeshes[i]];
 		meshes.push_back(this->ParsingMesh(pMesh, pScene));
 	}
-
+	
 	Node* newNode = new Node{ m_pDevice, pNode->mName.C_Str(), this, ConvertaiMatrixToXMMatrix(pNode->mTransformation), meshes };
 	if(pNode == pScene->mRootNode)
 	{
@@ -133,12 +134,12 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 			vertex.Tangent.z = mesh->mTangents[i].z;
 		}
 
-		if(mesh->HasBones())
-		{
-			ProcessBoneInfo(mesh, vertex);
-		}
-
 		vertices.push_back(vertex);
+	}
+
+	if (mesh->HasBones())
+	{
+		ProcessBoneInfo(mesh, &vertices[vertices.size() - 1]);
 	}
 
 	for (UINT i = 0; i < mesh->mNumFaces; i++)
@@ -170,9 +171,9 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 	return new Mesh{ m_pDevice, vertices, indices, textures };
 }
 
-void Model::ProcessBoneInfo(aiMesh* mesh, Vertex vertex)
+void Model::ProcessBoneInfo(aiMesh* mesh, Vertex* vertex)
 {
-	
+	// 해당 메시가 참조하는 본
 }
 
 bool Model::ParsingAnimation(const aiScene* pScene)
@@ -185,7 +186,7 @@ bool Model::ParsingAnimation(const aiScene* pScene)
 		Animation* animation = new Animation;
 		animation->AnimationName = (pScene->mAnimations[i]->mName).C_Str();
 		m_tickPerSecond = static_cast<float>(pScene->mAnimations[i]->mTicksPerSecond);
-		animation->AnimationDuration = m_curAnimationDuration = (pScene->mAnimations[i]->mDuration) / m_tickPerSecond;
+		animation->AnimationDuration = (pScene->mAnimations[i]->mDuration) / m_tickPerSecond;
 		animation->NodeAnimations = ParsingNodeAnimation(pScene->mAnimations[i]);
 
 		m_pAnimations.push_back(animation);

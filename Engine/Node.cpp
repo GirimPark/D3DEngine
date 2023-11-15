@@ -80,8 +80,8 @@ void Node::Update(float deltaTime)
 		m_localTransform = Matrix::CreateScale(scale) * Matrix::CreateFromQuaternion(quaternion) * Matrix::CreateTranslation(position);
 	}
 
-	UpdateTransform();
 
+	UpdateTransform();
 
 	for(const auto& child : m_pChildren)
 	{
