@@ -16,8 +16,8 @@ struct Vertex
 	XMFLOAT2 UV;
 	XMFLOAT3 Normal;
 	XMFLOAT3 Tangent;
-	INT BlendIndices[4] = {};
-	float BlendWeights[4] = {};
+	INT BlendIndices[4] = {};	// 참조하는 본의 인덱스
+	float BlendWeights[4] = {};	// 참조하는 본에 대한 가중치
 
 	void AddBoneData(int boneIndex, float weight)
 	{
