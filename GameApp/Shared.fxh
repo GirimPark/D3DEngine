@@ -40,6 +40,11 @@ cbuffer NodeTransformBuffer : register(b3)
     matrix NodeWorld;
 }
 
+cbuffer BoneMatrixBuffer : register(b4)
+{
+    matrix BoneMatrix[128];
+}
+
 //--------------------------------------------------------------------------------------
 struct VS_INPUT
 {

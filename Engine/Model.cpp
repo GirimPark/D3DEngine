@@ -30,6 +30,8 @@ Model::~Model()
 	m_pAnimations.clear();
 
 	SAFE_DELETE(m_pRootNode);
+
+	SAFE_RELEASE(m_pBoneMatrixConstantBuffer);
 }
 
 void Model::Load()
@@ -52,11 +54,22 @@ void Model::Load()
 	{
 		AssignAnimation(m_pRootNode);
 	}
+
+	// Setup for Bone Matrix Update
+	D3D11_BUFFER_DESC BMBDesc = {};
+	ZeroMemory(&BMBDesc, sizeof(BMBDesc));
+	BMBDesc.Usage = D3D11_USAGE_DEFAULT;
+	BMBDesc.ByteWidth = sizeof(BoneMatrixConstantBuffer);
+	BMBDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
+	BMBDesc.CPUAccessFlags = 0;
+	HR_T(m_pDevice->CreateBuffer(&BMBDesc, nullptr, &m_pBoneMatrixConstantBuffer));
 }
 
 void Model::Update(float deltaTime)
 {
 	m_pRootNode->Update(deltaTime);
+
+	UpdateBoneMatrix();
 }
 
 void Model::Render(ID3D11DeviceContext* devcon)
@@ -173,7 +186,11 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 
 void Model::ProcessBoneInfo(aiMesh* mesh, Vertex* vertex)
 {
-	// 해당 메시가 참조하는 본
+	// 1. 메시가 참조하는 본으로부터 정보 얻어와서 만들어진 Node에 트랜스폼 넣어주기
+	// 2. m_referencedBone 벡터의 Bone.pWorldMatrix가 해당 노드의 WorldMatrix를 참조하게 하기
+	// 3. 메시의 버텍스에 본 인덱스, 가중치 정보 추가
+	UINT meshBoneCount = mesh->mNumBones;
+	
 }
 
 bool Model::ParsingAnimation(const aiScene* pScene)
@@ -252,6 +269,20 @@ void Model::AssignAnimation(Node* node)
 	{
 		AssignAnimation(child);
 	}
+}
+
+void Model::UpdateBoneMatrix()
+{
+	assert(m_referencedBones.size() < 128);
+
+	BoneMatrixConstantBuffer BoneMatrixCB;
+	for(UINT i = 0; i<m_referencedBones.size(); ++i)
+	{
+		BoneMatrixCB.Array[i] = *(m_referencedBones[i].pWorldTransform);
+	}
+
+	m_pDeviceContext->PSSetConstantBuffers(4, 1, &m_pBoneMatrixConstantBuffer);
+	m_pDeviceContext->UpdateSubresource(m_pBoneMatrixConstantBuffer, 0, nullptr, &BoneMatrixCB, 0, 0);
 }
 
 std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName,

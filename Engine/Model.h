@@ -17,6 +17,17 @@ class Node;
 class Animation;
 class Mesh;
 
+struct Bone
+{
+	std::string Name;
+	Matrix* pWorldTransform;	// Node에 있는 WorldTransform 참조
+};
+
+struct BoneMatrixConstantBuffer
+{
+	Matrix Array[128];
+};
+
 class Model
 {
 private:
@@ -33,6 +44,10 @@ private:
 	std::string m_fileName;
 
 	std::vector<Texture> m_loadedTextures;
+
+	std::vector<Bone> m_referencedBones;
+
+	ID3D11Buffer* m_pBoneMatrixConstantBuffer = nullptr;
 
 public:
 	Model(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon, std::string fileName);
@@ -57,6 +72,8 @@ private:
 	std::vector<NodeAnimation*> ParsingNodeAnimation(aiAnimation* pAnimation);
 	std::vector<FrameKey> ParsingFrameKey(aiNodeAnim* pNodeAnim);
 	void AssignAnimation(Node* node);
+
+	void UpdateBoneMatrix();
 
 	std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName, const aiScene* scene);
 	ID3D11ShaderResourceView* LoadEmbeddedTexture(const aiTexture* embeddedTexture);
