@@ -1,12 +1,15 @@
 #include "pch.h"
 #include "Mesh.h"
 
+using namespace DirectX;
+
 Mesh::Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std::vector<UINT>& indices,
-	const std::vector<Texture>& textures)
+	const std::vector<Texture>& textures, SimpleMath::Vector4 baseColor)
 		: m_pDevice(device)
 		, m_vertices(vertices)
 		, m_indices(indices)
 		, m_textures(textures)
+		, m_baseColor(baseColor)
 		, m_pVertexBuffer(nullptr)
 		, m_pIndexBuffer(nullptr)
 {
@@ -68,6 +71,12 @@ void Mesh::Render(ID3D11DeviceContext* devcon)
 			TextureMapCB.UseOpacity = true;
 		}
 	}
+
+	if (TextureMapCB.UseDiffuse == false)
+	{
+		TextureMapCB.BaseColor = m_baseColor;
+	}
+
 	devcon->UpdateSubresource(m_pTextureMapConstantBuffer, 0, nullptr, &TextureMapCB, 0, 0);
 
 	devcon->DrawIndexed(static_cast<UINT>(m_indices.size()), 0, 0);

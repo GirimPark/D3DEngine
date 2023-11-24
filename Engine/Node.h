@@ -24,6 +24,8 @@ private:
 	float m_animationSpeed = 1.f;
 	std::vector<Mesh*> m_meshes;
 
+	bool m_bBoneLinked = false;
+
 	ID3D11Device* m_pDevice;
 	ID3D11Buffer* m_pNodeTransformConstantBuffer = nullptr;
 
@@ -39,8 +41,10 @@ public:
 	std::string GetName() { return m_name; }
 	std::vector<Node*>& GetChildren() { return m_pChildren; }
 	DirectX::XMMATRIX GetWorldTransform() { return m_localTransform; }
-	void SetWorldTransform(DirectX::XMMATRIX transform) { m_localTransform = transform; }
+	void SetWorldTransform(DirectX::XMMATRIX transform) { m_localTransform = transform; m_bBoneLinked = true; }
+	void LinkWorldTransform(Matrix*& pTransform) { pTransform = &m_worldTransform; }
 	void SetAnimationSpeed(float speed) { m_animationSpeed = speed; }
+	bool GetBoneLinked() { return m_bBoneLinked; }
 
 public:
 	void Update(float deltaTime);

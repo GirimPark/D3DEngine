@@ -5,6 +5,7 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <vector>
+#include <map>
 
 #include "Animation.h"
 
@@ -20,7 +21,8 @@ class Mesh;
 struct Bone
 {
 	std::string Name;
-	Matrix* pWorldTransform;	// Node에 있는 WorldTransform 참조
+	Matrix offsetMatrix;	// 본 기준 mesh의 offsetMatrix
+	Matrix* pBoneMatrix = nullptr;	// Node에 있는 WorldTransform 참조
 };
 
 struct BoneMatrixConstantBuffer
@@ -45,7 +47,11 @@ private:
 
 	std::vector<Texture> m_loadedTextures;
 
-	std::vector<Bone> m_referencedBones;
+	bool m_bBone;
+	std::vector<Bone> m_bones;
+	std::map<std::string, int> m_boneMap;
+	int m_boneIndex = 0;
+	int m_indexCount = 0;
 
 	ID3D11Buffer* m_pBoneMatrixConstantBuffer = nullptr;
 
@@ -67,12 +73,13 @@ public:
 private:
 	void ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene);
 	Mesh* ParsingMesh(aiMesh* mesh, const aiScene* pScene);
-	void ProcessBoneInfo(aiMesh* mesh, Vertex* vertex);
+	void ProcessBoneInfo(aiMesh* mesh, std::vector<Vertex>& vertices);
 	bool ParsingAnimation(const aiScene* pScene);
 	std::vector<NodeAnimation*> ParsingNodeAnimation(aiAnimation* pAnimation);
 	std::vector<FrameKey> ParsingFrameKey(aiNodeAnim* pNodeAnim);
 	void AssignAnimation(Node* node);
 
+	void AssignBone(Node* node);
 	void UpdateBoneMatrix();
 
 	std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName, const aiScene* scene);

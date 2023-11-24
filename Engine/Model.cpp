@@ -48,11 +48,17 @@ void Model::Load()
 
 	assert(pScene);
 
+	m_bones.resize(128);
+
 	ParsingNode(pScene->mRootNode, m_pRootNode, pScene);
 	m_bAnimation = ParsingAnimation(pScene);
 	if(m_bAnimation)
 	{
 		AssignAnimation(m_pRootNode);
+	}
+	if(m_bBone)
+	{
+		AssignBone(m_pRootNode);
 	}
 
 	// Setup for Bone Matrix Update
@@ -119,6 +125,7 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 	std::vector<Vertex> vertices;
 	std::vector<UINT> indices;
 	std::vector<Texture> textures;
+	Vector4 baseColor;
 
 	for(UINT i = 0; i<mesh->mNumVertices; i++)
 	{
@@ -150,11 +157,6 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 		vertices.push_back(vertex);
 	}
 
-	if (mesh->HasBones())
-	{
-		ProcessBoneInfo(mesh, &vertices[vertices.size() - 1]);
-	}
-
 	for (UINT i = 0; i < mesh->mNumFaces; i++)
 	{
 		aiFace& face = mesh->mFaces[i];
@@ -179,18 +181,62 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 		textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
 		std::vector<Texture> opacityMaps = this->LoadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity", pScene);
 		textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
+
+		if(textures.size() == 0)
+		{
+			aiColor4D aiBaseColor;
+			aiGetMaterialColor(material, AI_MATKEY_COLOR_DIFFUSE, &aiBaseColor);
+			
+			baseColor.x = aiBaseColor.r;
+			baseColor.y = aiBaseColor.g;
+			baseColor.z = aiBaseColor.b;
+			baseColor.w = aiBaseColor.a;
+		}
+	}
+
+	if (mesh->HasBones())
+	{
+		m_bBone = true;
+		ProcessBoneInfo(mesh, vertices);
+	}
+	else
+	{
+		m_bBone = false;
 	}
 	
-	return new Mesh{ m_pDevice, vertices, indices, textures };
+	return new Mesh{ m_pDevice, vertices, indices, textures, baseColor };
 }
 
-void Model::ProcessBoneInfo(aiMesh* mesh, Vertex* vertex)
+void Model::ProcessBoneInfo(aiMesh* mesh, std::vector<Vertex>& vertices)
 {
-	// 1. 메시가 참조하는 본으로부터 정보 얻어와서 만들어진 Node에 트랜스폼 넣어주기
-	// 2. m_referencedBone 벡터의 Bone.pWorldMatrix가 해당 노드의 WorldMatrix를 참조하게 하기
-	// 3. 메시의 버텍스에 본 인덱스, 가중치 정보 추가
-	UINT meshBoneCount = mesh->mNumBones;
-	
+	// TODO : 본 노드 - 메시 노드 순서 말고 메시 노드 - 본 노드 순서로 저장된 fbx도 고려할 것
+	// 1. 메시가 참조하는 본 정보 읽고 이름으로 중복 확인하기 - map 필요
+	// 2. 중복이 아니라면 인덱스를 줘서 m_bones 벡터에 넣기
+	//    bone 정보의 offsetMatrix 넣기
+	//	  메시의 Vertex에는 참조하는 인덱스, 가중치 정보 넣기
+	for(UINT i = 0; i<mesh->mNumBones; ++i)
+	{
+		aiBone* bone = mesh->mBones[i];
+		std::string boneName = bone->mName.C_Str();
+		if(m_boneMap.find(boneName) == m_boneMap.end())
+		{
+			m_boneIndex = m_indexCount++;
+
+			m_boneMap[boneName] = m_boneIndex;
+
+			m_bones[m_boneIndex].Name = boneName;
+			m_bones[m_boneIndex].offsetMatrix = ConvertaiMatrixToXMMatrix(bone->mOffsetMatrix);
+		}
+		else
+		{
+			m_boneIndex = m_boneMap[boneName];
+		}
+
+		for (UINT j = 0; j < bone->mNumWeights; ++j)
+		{
+			vertices[bone->mWeights[j].mVertexId].AddBoneData(m_boneIndex, bone->mWeights[j].mWeight);
+		}
+	}
 }
 
 bool Model::ParsingAnimation(const aiScene* pScene)
@@ -271,17 +317,31 @@ void Model::AssignAnimation(Node* node)
 	}
 }
 
-void Model::UpdateBoneMatrix()
+void Model::AssignBone(Node* node)
 {
-	assert(m_referencedBones.size() < 128);
-
-	BoneMatrixConstantBuffer BoneMatrixCB;
-	for(UINT i = 0; i<m_referencedBones.size(); ++i)
+	// 노드를 순회하면서 m_bones 벡터의 Bone.pWorldMatrix가 해당 노드의 WorldMatrix를 참조하게 하기
+	if(m_boneMap.find(node->GetName()) != m_boneMap.end() && !node->GetBoneLinked())
 	{
-		BoneMatrixCB.Array[i] = *(m_referencedBones[i].pWorldTransform);
+		node->LinkWorldTransform(m_bones[m_boneMap[node->GetName()]].pBoneMatrix);
 	}
 
-	m_pDeviceContext->PSSetConstantBuffers(4, 1, &m_pBoneMatrixConstantBuffer);
+	for(const auto& child : node->GetChildren())
+	{
+		AssignBone(child);
+	}
+}
+
+void Model::UpdateBoneMatrix()
+{
+	assert(m_bones.size() <= 128);
+
+	BoneMatrixConstantBuffer BoneMatrixCB;
+	for(UINT i = 0; i< m_indexCount; ++i)
+	{
+		BoneMatrixCB.Array[i] = (m_bones[i].offsetMatrix * (*(m_bones[i].pBoneMatrix))).Transpose();
+	}
+
+	m_pDeviceContext->VSSetConstantBuffers(4, 1, &m_pBoneMatrixConstantBuffer);
 	m_pDeviceContext->UpdateSubresource(m_pBoneMatrixConstantBuffer, 0, nullptr, &BoneMatrixCB, 0, 0);
 }
 

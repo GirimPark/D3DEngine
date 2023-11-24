@@ -33,6 +33,7 @@ cbuffer TexturingBuffer : register(b2)
     bool UseSpecular;
     bool UseEmissive;
     bool UseOpacity;
+    float4 BaseColor;
 }
 
 cbuffer NodeTransformBuffer : register(b3)
@@ -52,7 +53,7 @@ struct VS_INPUT
     float2 Texture : TEXTURE;
     float3 Normal : NORMAL;
     float3 Tangent : TANGENT;
-    int4 BlendIndices : BLENDINDICES;
+    uint4 BlendIndices : BLENDINDICES;
     float4 BlendWeights : BLENDWEIGHTS;
 };
 

@@ -12,7 +12,7 @@ LPCWSTR GetComErrorString(HRESULT hr)
 	return errMsg;
 }
 
-HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut)
+HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCSTR szShaderModel, ID3DBlob** ppBlobOut, LPCSTR modelType)
 {
 	HRESULT hr = S_OK;
 
@@ -32,7 +32,12 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
 	// D3DCompileFromFile
 	// (파일명, 셰이더 매크로, 컴파일러가 포함 파일을 처리하는 포인터(include Shared.fxh), 진입점 함수 이름, 셰이더 모델,
 	//	셰이더 컴파일 옵션, 효과 컴파일 옵션, 컴파일된 코드에 액세스할 포인터 변수, 컴파일러 오류 메시지에 액세스할 포인터 변수)
-	hr = D3DCompileFromFile(szFileName, nullptr, D3D_COMPILE_STANDARD_FILE_INCLUDE, szEntryPoint, szShaderModel,
+	D3D10_SHADER_MACRO defines[] =
+	{
+		{modelType, ""},
+		{nullptr, nullptr}
+	};
+	hr = D3DCompileFromFile(szFileName, defines, D3D_COMPILE_STANDARD_FILE_INCLUDE, szEntryPoint, szShaderModel,
 		dwShaderFlags, 0, ppBlobOut, &pErrorBlob);
 	if(FAILED(hr))
 	{

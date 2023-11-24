@@ -40,7 +40,8 @@ public:
 
 	// 모델 로더
 	Model* m_pModel = nullptr;
-	std::string m_ModelPath = "../Resources/FBX/SkinningTest.fbx";
+	std::string m_modelPath = "../Resources/FBX/SkinningTest.fbx";
+	LPCSTR m_modelType = "VERTEX_SKINNING";
 
 	// 상수 버퍼를 통해 전달할 변환 정보
 	// 위치 상수 버퍼
@@ -52,7 +53,7 @@ public:
 	Vector4 m_LightDirection = { 0.f, 0.f, 1.f, 1.f };
 	Vector4 m_LightColor = { 1.f, 1.f, 1.f, 1.f };
 	FLOAT m_LightIntensity = 1.f;
-	FLOAT m_AmbientPower = 0.1f;
+	FLOAT m_AmbientPower = 94.f / 255.f;
 	FLOAT m_SpecularPower = 2000.f;
 
 	// ImGUI와 연결할 정보

@@ -29,8 +29,9 @@ float4 main(PS_INPUT input) : SV_Target
     }
     else
     {
-        materialColor = float3(1.f, 1.f, 1.f);
+        materialColor = BaseColor;
     }
+    materialColor.rgb = pow(materialColor, 2.2);
 
     /// SpecularMap Mapping
     float3 specularMapColor;
@@ -69,6 +70,7 @@ float4 main(PS_INPUT input) : SV_Target
     }
 
     float3 finalColor = saturate(ambientColor + diffuseColor + specularColor + emissiveColor);
+    finalColor = pow(finalColor, 1/2.2);
 
     // opacity
     float opacityColor;

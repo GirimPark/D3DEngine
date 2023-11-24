@@ -334,11 +334,11 @@ bool GameApp::InitializeScene()
 
 	/// 버텍스 셰이더, 픽셀 셰이더 생성
 	ID3DBlob* vertexShaderBuffer = nullptr; // 컴파일된 코드에 액세스할 포인터 변수
-	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_5_0", &vertexShaderBuffer));
+	HR_T(CompileShaderFromFile(L"BasicVertexShader.hlsl", "main", "vs_5_0", &vertexShaderBuffer, m_modelType));
 	HR_T(m_pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), NULL, &m_pVertexShader));
 	ID3DBlob* pixelShaderBuffer = nullptr;
-	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_5_0", &pixelShaderBuffer));
+	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_5_0", &pixelShaderBuffer, m_modelType));
 	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
 		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
 
@@ -422,7 +422,7 @@ bool GameApp::InitializeScene()
 	HR_T(m_pDevice->CreateBlendState(&blendDesc, &m_pAlphaBlendState));
 
 	/// 모델 로더 생성
-	m_pModel = new Model{ m_hWnd, m_pDevice, m_pDeviceContext, m_ModelPath };
+	m_pModel = new Model{ m_hWnd, m_pDevice, m_pDeviceContext, m_modelPath };
 	m_pModel->Load();
 
 	return true;
