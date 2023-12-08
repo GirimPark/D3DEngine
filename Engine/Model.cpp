@@ -372,9 +372,14 @@ std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* material, aiTexture
 		{
 			Texture texture;
 
-			const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(str.C_Str());
-
 			std::string fileName = std::string(str.C_Str());
+			if(int at = fileName.find_last_of(".tga"))
+			{
+				fileName = fileName.substr(0, at-2) + "png";
+			}
+
+			const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.c_str());
+
 			if (std::string::npos != fileName.find_last_of("/\\"))
 			{
 				fileName = "../Textures/" + fileName.substr(fileName.find_last_of("/\\"));

@@ -110,7 +110,10 @@ void GameApp::Update()
 	XMMATRIX translate = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
 	m_WorldModel = scale * spin * translate;
 	m_pModel->SetTransform(m_WorldModel);
-	m_pModel->SetAnimationSpeed(m_AnimationSpeed);
+	if(m_pModel->GetbAnimation())
+	{
+		m_pModel->SetAnimationSpeed(m_AnimationSpeed);
+	}
 	m_TranslateModel = Vector3(m_WorldModel._41, m_WorldModel._42, m_WorldModel._43);
 
 	// Camera

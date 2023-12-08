@@ -69,6 +69,7 @@ public:
 	void SetAnimationSpeed(float speed) { m_pAnimations[m_curAnimationIdx]->AnimationSpeed = speed; }
 	float GetAnimationSpeed() { return m_pAnimations[m_curAnimationIdx]->AnimationSpeed; }
 	float GetAnimationDuration() { return m_pAnimations[m_curAnimationIdx]->AnimationDuration; }
+	bool GetbAnimation() { return m_bAnimation; }
 
 private:
 	void ParsingNode(aiNode* pNode, Node* pParentNode, const aiScene* pScene);
