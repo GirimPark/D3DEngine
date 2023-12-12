@@ -11,6 +11,7 @@
 #pragma comment (lib, "d3d11.lib")
 
 #define USE_FLIPMODE 1
+#define _PBR
 
 using namespace DirectX;
 using namespace DirectX::SimpleMath;
@@ -341,10 +342,15 @@ bool GameApp::InitializeScene()
 	HR_T(m_pDevice->CreateVertexShader(vertexShaderBuffer->GetBufferPointer(),
 		vertexShaderBuffer->GetBufferSize(), NULL, &m_pVertexShader));
 	ID3DBlob* pixelShaderBuffer = nullptr;
+#ifdef _PBR
+	HR_T(CompileShaderFromFile(L"PBRPixelShader.hlsl", "main", "ps_5_0", &pixelShaderBuffer, m_modelType));
+	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
+		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
+#else
 	HR_T(CompileShaderFromFile(L"BasicPixelShader.hlsl", "main", "ps_5_0", &pixelShaderBuffer, m_modelType));
 	HR_T(m_pDevice->CreatePixelShader(pixelShaderBuffer->GetBufferPointer(),
 		pixelShaderBuffer->GetBufferSize(), NULL, &m_pPixelShader));
-
+#endif
 
 	/// 2. Render() 에서 파이프라인에 바인딩할 InputLayout 생성
 	// 인풋 레이아웃은 버텍스 쉐이더가 입력받을 데이터의 형식을 지정한다.

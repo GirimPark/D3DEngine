@@ -185,49 +185,9 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 		textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
 		std::vector<Texture> metalnessMaps = this->LoadMaterialTextures(material, aiTextureType_METALNESS, "texture_metalness", pScene);
 		textures.insert(textures.end(), metalnessMaps.begin(), metalnessMaps.end());
-		std::vector<Texture> roughnessMaps = this->LoadMaterialTextures(material, aiTextureType_DIFFUSE_ROUGHNESS, "texture_roughness", pScene);
+		// roughness texture, assimp에서 shininess 타입으로 읽는다 흠
+		std::vector<Texture> roughnessMaps = this->LoadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", pScene);
 		textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
-
-		//test
-
-		Texture texture;
-
-		std::string fileName = m_directory + "/../Textures/cerberus_R.png";
-		std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
-		HR_T(CreateWICTextureFromFile(m_pDevice, m_pDeviceContext, fileNameWs.c_str(), nullptr, &texture.Source));
-
-		texture.Type = "texture_roughness";
-		texture.Path = fileName;
-		textures.push_back(texture);
-		this->m_loadedTextures.push_back(texture);
-
-		//std::string filename = m_directory + "/Texutres/cerberus_R.png";
-		//D3D11_TEXTURE2D_DESC desc;
-		//int width, height, channels;
-		//int channel = DXGI_FORMAT_R8_UNORM;
-		//stbi_loadf(filename.c_str(), &width, &height, &channels, channel);
-		//desc.Width = width;
-		//desc.Height = height;
-		//desc.MipLevels = 1;
-		//desc.ArraySize = 1;
-		//desc.SampleDesc.Count = 1;
-		//desc.SampleDesc.Quality = 0;
-		//desc.Usage = D3D11_USAGE_DEFAULT;
-		//desc.Format = DXGI_FORMAT_B8G8R8A8_UNORM;
-		//desc.BindFlags = D3D11_BIND_SHADER_RESOURCE;
-		//desc.CPUAccessFlags = 0;
-		//desc.MiscFlags = 0;
-
-		//D3D11_SUBRESOURCE_DATA subResourceData;
-		//subResourceData.pSysMem = embeddedTexture->pcData;
-		//subResourceData.SysMemPitch = width * 4;
-		//subResourceData.SysMemSlicePitch = width * height * 4;
-
-		//ID3D11Texture2D* texture2D = nullptr;
-		//HR_T(m_pDevice->CreateTexture2D(&desc, &subResourceData, &texture2D));
-		//HR_T(m_pDevice->CreateShaderResourceView(texture2D, nullptr, &texture));
-		//
-		//textures.insert()
 
 		if(textures.size() == 0)
 		{
