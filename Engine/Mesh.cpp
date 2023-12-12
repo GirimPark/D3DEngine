@@ -70,6 +70,16 @@ void Mesh::Render(ID3D11DeviceContext* devcon)
 			devcon->PSSetShaderResources(4, 1, &texture.Source);
 			TextureMapCB.UseOpacity = true;
 		}
+		if (texture.Type == "texture_metalness")
+		{
+			devcon->PSSetShaderResources(5, 1, &texture.Source);
+			TextureMapCB.UseMetalness = true;
+		}
+		if (texture.Type == "texture_roughness")
+		{
+			devcon->PSSetShaderResources(6, 1, &texture.Source);
+			TextureMapCB.UseRoughness = true;
+		}
 	}
 
 	if (TextureMapCB.UseDiffuse == false)

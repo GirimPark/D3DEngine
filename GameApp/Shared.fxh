@@ -6,6 +6,8 @@ Texture2D txNormal : register(t1);
 Texture2D txSpecular : register(t2);
 Texture2D txEmissive : register(t3);
 Texture2D txOpacity : register(t4);
+Texture2D txMetalness : register(t5);
+Texture2D txRoughness : register(t6);
 
 SamplerState samLinear : register(s0);
 
@@ -33,6 +35,8 @@ cbuffer TexturingBuffer : register(b2)
     bool UseSpecular;
     bool UseEmissive;
     bool UseOpacity;
+    bool UseMetalness;
+    bool UseRoughness;
     float4 BaseColor;
 }
 

@@ -54,8 +54,10 @@ struct TextureMapConstantBuffer
 	BOOL UseSpecular = false;
 	BOOL UseEmissive = false;
 	BOOL UseOpacity = false;
+	BOOL UseMetalness = false;
+	BOOL UseRoughness = false;
 
-	SimpleMath::Vector3 garbage;
+	BOOL garbage;
 
 	SimpleMath::Vector4 BaseColor = {1.f, 1.f, 1.f, 1.f};
 };

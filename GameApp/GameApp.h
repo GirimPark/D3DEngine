@@ -40,7 +40,7 @@ public:
 
 	// 모델 로더
 	Model* m_pModel = nullptr;
-	std::string m_modelPath = "../Resources/FBX/cerberus3.fbx";
+	std::string m_modelPath = "../Resources/FBX/cerberus2.fbx";
 	LPCSTR m_modelType = "VERTEX_SKINNINGx";
 
 	// 상수 버퍼를 통해 전달할 변환 정보

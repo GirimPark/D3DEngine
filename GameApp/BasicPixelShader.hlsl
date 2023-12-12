@@ -82,7 +82,7 @@ float4 main(PS_INPUT input) : SV_Target
     }
 
     // ambient
-    //float3 ambientColor =  AmbientPower * albedoColor;
+    float3 ambientColor =  AmbientPower * albedoColor;
 
     // diffuse
     float3 lightDir = normalize(LightDirection.xyz);
@@ -118,26 +118,40 @@ float4 main(PS_INPUT input) : SV_Target
     {
 	    opacityColor = 1.f;
     }
-
+    //---------------------------------------------------------------------------
     /// PBR
     // Specular BRDF
-    float roughness = 0.5f;
-    float metalness = 0.3f;
-
-    float D = ndfGGX(cosNH, roughness);
-
-    float cosLH = max(0.f, dot(viewVector, halfVector));
-    float3 F0 = lerp(Fdielectric, albedoColor, metalness);
-    float3 F = fresnelSchlick(F0, cosLH);
-
-    float cosNL = max(0.f, dot(normal, -lightDir));
-    float G = gaSchlickGGX(cosNL, cosNH, roughness);
-
-    // Diffuse BRDF
-    float 
-
-    /// 최종 색상은 
     float3 finalColor;
+    if(UseMetalness)
+    {
+	    float roughness = txRoughness.Sample(samLinear, input.Texture).r;
+        //float roughness = 0.3f;
+	    float metalness = txMetalness.Sample(samLinear, input.Texture).r;
+
+	    float D = ndfGGX(cosNH, roughness);
+
+	    float cosLH = max(0.f, dot(viewVector, halfVector));
+	    float3 F0 = lerp(Fdielectric, albedoColor, metalness);
+	    float3 F = fresnelSchlick(F0, cosLH);
+
+	    float cosNL = max(0.f, dot(normal, -lightDir));
+	    float G = gaSchlickGGX(cosNL, cosNH, roughness);
+
+	    float cosNV = max(0.f, dot(normal, viewVector));
+	    float3 specularBRDF = (F * D * G) / max(Epsilon, 4.0 * cosNL * cosNV);
+
+	    // Diffuse BRDF
+	    float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
+	    float3 diffuseBRDF = kd * albedoColor;
+
+	    /// 최종 색상은 (SpecularBRDF 결과 + DiffuseBRDF 결과) * 빛의 강도 * NdotL
+	    float3 PBRColor = (diffuseBRDF + specularBRDF) * LightIntensity * cosNL;
+	    finalColor = PBRColor + ambientColor;
+    }
+    else
+    {
+	    finalColor = prePBRColor + ambientColor;
+    }
     finalColor = pow(finalColor, 1/2.2);
 
     return float4(finalColor, opacityColor);
