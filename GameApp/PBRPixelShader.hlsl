@@ -42,7 +42,7 @@ float gaSchlickGGX(float cosNL, float cosNH, float roughness)
 
 float4 main(PS_INPUT input) : SV_Target
 {
-    /// NormalMap Mapping
+    /// Normal
     float3 normal;
     if (UseNormal)
     {
@@ -58,7 +58,7 @@ float4 main(PS_INPUT input) : SV_Target
         normal = normalize(input.Normal);
     }
 
-    /// Lighting
+    /// Albedo
     float3 albedoColor;
     if (UseDiffuse)
     {
@@ -70,14 +70,10 @@ float4 main(PS_INPUT input) : SV_Target
     }
     albedoColor.rgb = pow(albedoColor, 2.2);
 
-    // ambient
+    // AmbientColor
     float3 ambientColor = AmbientPower * albedoColor;
 
-    // diffuse
     float3 lightDir = normalize(LightDirection.xyz);
-    float3 colorFactor = LightColor.xyz * albedoColor;
-    float3 diffuseColor = saturate(dot(normal, -lightDir) * colorFactor) * LightIntensity;
-
     float3 viewVector = normalize(CameraTranslation - input.PixelPos);
     float3 halfVector = normalize(-lightDir + viewVector);
     float cosNH = max(0.f, dot(normal, halfVector));
@@ -105,7 +101,7 @@ float4 main(PS_INPUT input) : SV_Target
     float3 diffuseBRDF = kd * albedoColor;
 
     /// 최종 색상은 (SpecularBRDF 결과 + DiffuseBRDF 결과) * 빛의 강도 * NdotL
-    float3 PBRColor = (diffuseBRDF + specularBRDF) * LightIntensity * cosNL;
+    float3 PBRColor = (diffuseBRDF + specularBRDF) * LightIntensity * LightColor * cosNL;
     float3 finalColor = PBRColor + ambientColor;
     finalColor = pow(finalColor, 1 / 2.2);
 

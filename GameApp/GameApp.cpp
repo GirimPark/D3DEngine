@@ -144,7 +144,7 @@ void GameApp::Render()
 #endif
 
 	// 화면, Depth Buffer 초기화
-	DirectX::SimpleMath::Color color(0.f, 0.f, 0.f, 1.f);
+	DirectX::SimpleMath::Color color(.5f, .5f, .5f, 1.f);
 	m_pDeviceContext->ClearRenderTargetView(m_pRenderTargetView, color);
 	m_pDeviceContext->ClearDepthStencilView(m_pDepthStencilView, D3D11_CLEAR_DEPTH, 1.f, 0);
 
