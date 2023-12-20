@@ -98,6 +98,7 @@ float4 main(PS_INPUT input) : SV_Target
 
     // Diffuse BRDF
     float3 kd = lerp(float3(1, 1, 1) - F, float3(0, 0, 0), metalness);
+    //float3 kd = 1-F;
     float3 diffuseBRDF = kd * albedoColor;
 
     /// 최종 색상은 (SpecularBRDF 결과 + DiffuseBRDF 결과) * 빛의 강도 * NdotL
