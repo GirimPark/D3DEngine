@@ -5,6 +5,7 @@
 //--------------------------------------------------------------------------------------
 
 static const float PI = 3.141592;
+// Q : epsilon을 높여야 하얀 점 현상이 사라진다
 static const float Epsilon = 0.00001;
 
 static const float3 Fdielectric = 0.04;
@@ -84,7 +85,7 @@ float4 main(PS_INPUT input) : SV_Target
     float roughness = txRoughness.Sample(samLinear, input.Texture).r;
     float metalness = txMetalness.Sample(samLinear, input.Texture).r;
 
-    float D = ndfGGX(cosNH, roughness);
+    float D = ndfGGX(cosNH, max(0.1f, roughness));
 
     float cosLH = max(0.f, dot(viewVector, halfVector));
     float3 F0 = lerp(Fdielectric, albedoColor, metalness);
@@ -94,6 +95,7 @@ float4 main(PS_INPUT input) : SV_Target
     float G = gaSchlickGGX(cosNL, cosNH, roughness);
 
     float cosNV = max(0.f, dot(normal, viewVector));
+    
     float3 specularBRDF = (F * D * G) / max(Epsilon, 4.0 * cosNL * cosNV);
 
     // Diffuse BRDF
