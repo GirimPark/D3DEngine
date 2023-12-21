@@ -92,9 +92,8 @@ float4 main(PS_INPUT input) : SV_Target
     float3 F = fresnelSchlick(F0, cosLH);
 
     float cosNL = max(0.f, dot(normal, -lightDir));
-    float G = gaSchlickGGX(cosNL, cosNH, roughness);
-
     float cosNV = max(0.f, dot(normal, viewVector));
+    float G = gaSchlickGGX(cosNL, cosNV, roughness);
     
     float3 specularBRDF = (F * D * G) / max(Epsilon, 4.0 * cosNL * cosNV);
 
