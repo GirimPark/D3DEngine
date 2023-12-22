@@ -72,7 +72,7 @@ void Mesh::Render(ID3D11DeviceContext* devcon)
 		}
 		if (texture.Type == "texture_metalness")
 		{
-			devcon->PSSetShaderResources(5, 1, &texture.Source);
+			devcon->PSSetShaderResources(5, 1, &texture.Source.Get());
 			TextureMapCB.UseMetalness = true;
 		}
 		if (texture.Type == "texture_roughness")

@@ -5,6 +5,7 @@
 #include <d3d11_1.h>
 #include <DirectXMath.h>
 #include <directxtk/SimpleMath.h>
+#include <wrl/client.h>
 
 #include "Helper.h"
 
@@ -35,16 +36,20 @@ struct Vertex
 	}
 };
 
+// TODO : Material, Texture는 class로 분리한다. 이제 Mesh가 아니라 Model에서 가질 정보니까,,~
+// 나중에 컴포넌트 구조로 고치면 Object-MeshModelComponent에서 가질 정보 아닌가? 흠 바꾸지말까
 struct Texture
 {
 	std::string Type;
 	std::string Path;
-	ID3D11ShaderResourceView* Source;
+	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Source;
 
-	void Release()
-	{
-		SAFE_RELEASE(Source);
-	}
+	
+};
+
+class Material
+{
+
 };
 
 struct TextureMapConstantBuffer

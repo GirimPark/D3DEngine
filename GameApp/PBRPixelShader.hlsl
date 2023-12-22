@@ -25,7 +25,7 @@ float ndfGGX(float cosNH, float roughness)
 float fresnelSchlick(float3 F0, float cosVH)
 {
     // F, ÇÁ·¹³Ú-½¶¸¯ ¹æÁ¤½Ä
-    return (F0 + (1.0 - F0) * (1.0 - pow(cosVH, 5.0)));
+    return (F0 + (1.0 - F0) * pow(1.0 - cosVH, 5.0));
 }
 
 float gaSchlickG1(float cosTheta, float k)
@@ -33,12 +33,12 @@ float gaSchlickG1(float cosTheta, float k)
     return (cosTheta / (cosTheta * (1 - k) + k));
 }
 
-float gaSchlickGGX(float cosNL, float cosNH, float roughness)
+float gaSchlickGGX(float cosNL, float cosNV, float roughness)
 {
     // G, ±âÇÏÇÐÀû °¨¼è
     float alpha = roughness + 1.0;
     float k = (alpha * alpha) / 8.0;    // Epic
-    return gaSchlickG1(cosNL, k) * gaSchlickG1(cosNH, k);
+    return gaSchlickG1(cosNL, k) * gaSchlickG1(cosNV, k);
 }
 
 float4 main(PS_INPUT input) : SV_Target
