@@ -25,10 +25,6 @@ Mesh::~Mesh()
 	m_vertices.clear();
 	m_indices.clear();
 
-	for (auto& texture : m_textures)
-	{
-		texture.Release();
-	}
 	m_textures.clear();
 }
 
@@ -47,37 +43,37 @@ void Mesh::Render(ID3D11DeviceContext* devcon)
 	{
 		if (texture.Type == "texture_diffuse")
 		{
-			devcon->PSSetShaderResources(0, 1, &texture.Source);
+			devcon->PSSetShaderResources(0, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseDiffuse = true;
 		}
 		if (texture.Type == "texture_normal")
 		{
-			devcon->PSSetShaderResources(1, 1, &texture.Source);
+			devcon->PSSetShaderResources(1, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseNormal = true;
 		}
 		if (texture.Type == "texture_specular")
 		{
-			devcon->PSSetShaderResources(2, 1, &texture.Source);
+			devcon->PSSetShaderResources(2, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseSpecular = true;
 		}
 		if (texture.Type == "texture_emissive")
 		{
-			devcon->PSSetShaderResources(3, 1, &texture.Source);
+			devcon->PSSetShaderResources(3, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseEmissive = true;
 		}
 		if (texture.Type == "texture_opacity")
 		{
-			devcon->PSSetShaderResources(4, 1, &texture.Source);
+			devcon->PSSetShaderResources(4, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseOpacity = true;
 		}
 		if (texture.Type == "texture_metalness")
 		{
-			devcon->PSSetShaderResources(5, 1, &texture.Source.Get());
+			devcon->PSSetShaderResources(5, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseMetalness = true;
 		}
 		if (texture.Type == "texture_roughness")
 		{
-			devcon->PSSetShaderResources(6, 1, &texture.Source);
+			devcon->PSSetShaderResources(6, 1, texture.Source.GetAddressOf());
 			TextureMapCB.UseRoughness = true;
 		}
 	}
