@@ -2,6 +2,7 @@
 #include "GameApp.h"
 
 #include "../Engine/Model.h"
+#include "../Engine/ResourceManager.h"
 
 #include <directxtk/SimpleMath.h>
 #include <imgui.h>
@@ -77,6 +78,8 @@ bool GameApp::Initialize()
 		return false;
 	}
 
+	ResourceManager::GetInstance()->Setup(m_hWnd, m_pDevice, m_pDeviceContext);
+
 	if(!InitializeScene())
 	{
 		return false;
@@ -91,11 +94,23 @@ bool GameApp::Initialize()
 	QueryPerformanceCounter(&m_previousTime);
 	QueryPerformanceCounter(&m_currentTime);
 
+	
+
 	return true;
 }
 
 void GameApp::Update()
 {
+	// ResourceManager Test
+	if(GetAsyncKeyState(VK_UP)&0x0001)
+	{
+		IncreaseModel();
+	}
+	if (GetAsyncKeyState(VK_DOWN)&0x0001)
+	{
+		DecreaseModel();
+	}
+
 	m_previousTime = m_currentTime;
 	QueryPerformanceCounter(&m_currentTime);
 	m_deltaTime = static_cast<float>(m_currentTime.QuadPart - m_previousTime.QuadPart) / static_cast<float>(m_frequency.QuadPart);
@@ -110,11 +125,11 @@ void GameApp::Update()
 	XMMATRIX spin = XMMatrixRotationRollPitchYaw(XMConvertToRadians(m_ModelPitch), XMConvertToRadians(m_ModelYAW), 0.f);
 	XMMATRIX translate = XMMatrixTranslation(m_TranslateModel.x, m_TranslateModel.y, m_TranslateModel.z);
 	m_WorldModel = scale * spin * translate;
-	m_pModel->SetTransform(m_WorldModel);
-	if(m_pModel->GetbAnimation())
-	{
-		m_pModel->SetAnimationSpeed(m_AnimationSpeed);
-	}
+	//m_pModel->SetTransform(m_WorldModel);
+	//if(m_pModel->GetbAnimation())
+	//{
+	//	m_pModel->SetAnimationSpeed(m_AnimationSpeed);
+	//}
 	m_TranslateModel = Vector3(m_WorldModel._41, m_WorldModel._42, m_WorldModel._43);
 
 	// Camera
@@ -132,7 +147,10 @@ void GameApp::Update()
 
 	m_Projection = XMMatrixPerspectiveFovLH(XMConvertToRadians(m_FOV), ScreenWidth / static_cast<FLOAT>(ScreenHeight), m_NearZ, m_FarZ);
 
-	m_pModel->Update(m_deltaTime);
+	for(auto& model : m_models)
+	{
+		model->Update(m_deltaTime);
+	}
 
 	__super::Update();
 }
@@ -176,7 +194,10 @@ void GameApp::Render()
 	TCBSun.mProjection = XMMatrixTranspose(m_Projection);
 	m_pDeviceContext->UpdateSubresource(m_pTransformConstantBuffer, 0, nullptr, &TCBSun, 0, 0);
 	// Render
-	m_pModel->Render(m_pDeviceContext);
+	for (auto& model : m_models)
+	{
+		model->Render(m_pDeviceContext);
+	}
 
 	/// ImGUI
 	ImGui_ImplDX11_NewFrame();
@@ -431,8 +452,7 @@ bool GameApp::InitializeScene()
 	HR_T(m_pDevice->CreateBlendState(&blendDesc, &m_pAlphaBlendState));
 
 	/// 모델 로더 생성
-	m_pModel = new Model{ m_hWnd, m_pDevice, m_pDeviceContext, m_modelPath };
-	m_pModel->Load();
+
 
 	return true;
 }
@@ -447,9 +467,6 @@ void GameApp::FinalizeScene()
 	SAFE_RELEASE(m_pLightingConstantBuffer);
 	SAFE_RELEASE(m_pSamplerLinear);
 	SAFE_RELEASE(m_pAlphaBlendState);
-
-	SAFE_DELETE(m_pModel);
-
 }
 
 bool GameApp::InitializeImGUI()
@@ -474,6 +491,31 @@ void GameApp::FinalizeImGUI()
 	ImGui_ImplDX11_Shutdown();
 	ImGui_ImplWin32_Shutdown();
 	ImGui::DestroyContext();
+}
+
+void GameApp::IncreaseModel()
+{
+	std::shared_ptr<Model> model = ResourceManager::GetInstance()->CreateModel(m_modelPath);
+
+	int range = 500;
+	float pos = (float)(rand() % range) - range * 0.5f;
+	Matrix transform = Matrix::CreateTranslation(pos, 0, 0);
+
+	model->SetTransform(transform);
+	if (model->GetbAnimation())
+	{
+		model->SetAnimationSpeed(m_AnimationSpeed);
+	}
+
+	m_models.push_back(model);
+}
+
+void GameApp::DecreaseModel()
+{
+	if (m_models.empty())
+		return;
+
+	m_models.pop_back();
 }
 
 extern IMGUI_IMPL_API LRESULT ImGui_ImplWin32_WndProcHandler(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam);

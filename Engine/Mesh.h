@@ -4,10 +4,13 @@
 #include <vector>
 #include <d3d11_1.h>
 #include <DirectXMath.h>
+#include <__msvc_filebuf.hpp>
 #include <directxtk/SimpleMath.h>
+#include <directxtk/WICTextureLoader.h>
 #include <wrl/client.h>
 
 #include "Helper.h"
+#include "ResourceManager.h"
 
 using namespace DirectX;
 
@@ -36,20 +39,18 @@ struct Vertex
 	}
 };
 
-// TODO : Material, Texture는 class로 분리한다. 이제 Mesh가 아니라 Model에서 가질 정보니까,,~
-// 나중에 컴포넌트 구조로 고치면 Object-MeshModelComponent에서 가질 정보 아닌가? 흠 바꾸지말까
 struct Texture
 {
 	std::string Type;
-	std::string Path;
+	std::wstring Path;
 	Microsoft::WRL::ComPtr<ID3D11ShaderResourceView> Source;
 
-	
-};
-
-class Material
-{
-
+	void Create(std::string type, std::wstring filepath)
+	{
+		Type = type;
+		Path = filepath;
+		CreateWICTextureFromFile(ResourceManager::GetInstance()->GetDevice(), Path.c_str(), nullptr, Source.GetAddressOf());
+	}
 };
 
 struct TextureMapConstantBuffer
@@ -72,7 +73,7 @@ class Mesh
 private:
 	std::vector<Vertex> m_vertices;
 	std::vector<UINT> m_indices;
-	std::vector<Texture> m_textures;
+	std::vector<std::shared_ptr<Texture>> m_textures;
 	SimpleMath::Vector4 m_baseColor;
 
 	ID3D11Device* m_pDevice = nullptr;
@@ -82,7 +83,7 @@ private:
 	ID3D11Buffer* m_pTextureMapConstantBuffer = nullptr;
 
 public:
-	Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, const std::vector<Texture>& textures, SimpleMath::Vector4 baseColor);
+	Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std::vector<UINT>& indices, std::vector<std::shared_ptr<Texture>> textures, SimpleMath::Vector4 baseColor);
 	~Mesh();
 
 public:
@@ -91,4 +92,3 @@ public:
 private:
 	void SetupMesh();
 };
-

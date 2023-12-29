@@ -10,17 +10,14 @@
 #include "Node.h"
 #include "Mesh.h"
 #include "Animation.h"
+#include "ResourceManager.h"
 
 #include <stb_image.h>
 
-Model::Model(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon, std::string fileName)
-	: m_HWND(hwnd)
-	, m_pDevice(pDevice)
-	, m_pDeviceContext(pDevcon)
-	, m_fileName(fileName)
-	, m_directory(fileName.substr(0, fileName.find_last_of("/\\")))
+Model::Model(std::string filepath)
+	: m_filePath(filepath)
+	, m_directory(filepath.substr(0, filepath.find_last_of("/\\")))
 {
-	
 }
 
 Model::~Model()
@@ -40,7 +37,7 @@ void Model::Load()
 {
 	Assimp::Importer importer;
 	importer.SetPropertyBool(AI_CONFIG_IMPORT_FBX_PRESERVE_PIVOTS, false);
-	const aiScene* pScene = importer.ReadFile(m_fileName,
+	const aiScene* pScene = importer.ReadFile(m_filePath,
 		aiProcess_Triangulate |
 		aiProcess_GenNormals |
 		aiProcess_GenUVCoords |
@@ -71,6 +68,13 @@ void Model::Load()
 	BMBDesc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
 	BMBDesc.CPUAccessFlags = 0;
 	HR_T(m_pDevice->CreateBuffer(&BMBDesc, nullptr, &m_pBoneMatrixConstantBuffer));
+}
+
+void Model::Initialize(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon)
+{
+	m_HWND = hwnd;
+	m_pDevice = pDevice;
+	m_pDeviceContext = pDevcon;
 }
 
 void Model::Update(float deltaTime)
@@ -126,7 +130,7 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 {
 	std::vector<Vertex> vertices;
 	std::vector<UINT> indices;
-	std::vector<Texture> textures;
+	std::vector<std::shared_ptr<Texture>> textures;
 	Vector4 baseColor;
 
 	for(UINT i = 0; i<mesh->mNumVertices; i++)
@@ -173,20 +177,21 @@ Mesh* Model::ParsingMesh(aiMesh* mesh, const aiScene* pScene)
 	{
 		aiMaterial* material = pScene->mMaterials[mesh->mMaterialIndex];
 
-		std::vector<Texture> diffuseMaps = this->LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", pScene);
+
+		std::vector<std::shared_ptr<Texture>> diffuseMaps = this->LoadMaterialTextures(material, aiTextureType_DIFFUSE, "texture_diffuse", pScene);
 		textures.insert(textures.end(), diffuseMaps.begin(), diffuseMaps.end());
-		std::vector<Texture> normalMaps = this->LoadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", pScene);
+		std::vector<std::shared_ptr<Texture>> normalMaps = this->LoadMaterialTextures(material, aiTextureType_NORMALS, "texture_normal", pScene);
 		textures.insert(textures.end(), normalMaps.begin(), normalMaps.end());
-		std::vector<Texture> specularMaps = this->LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", pScene);
+		std::vector<std::shared_ptr<Texture>> specularMaps = this->LoadMaterialTextures(material, aiTextureType_SPECULAR, "texture_specular", pScene);
 		textures.insert(textures.end(), specularMaps.begin(), specularMaps.end());
-		std::vector<Texture> emissiveMaps = this->LoadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive", pScene);
+		std::vector<std::shared_ptr<Texture>> emissiveMaps = this->LoadMaterialTextures(material, aiTextureType_EMISSIVE, "texture_emissive", pScene);
 		textures.insert(textures.end(), emissiveMaps.begin(), emissiveMaps.end());
-		std::vector<Texture> opacityMaps = this->LoadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity", pScene);
+		std::vector<std::shared_ptr<Texture>> opacityMaps = this->LoadMaterialTextures(material, aiTextureType_OPACITY, "texture_opacity", pScene);
 		textures.insert(textures.end(), opacityMaps.begin(), opacityMaps.end());
-		std::vector<Texture> metalnessMaps = this->LoadMaterialTextures(material, aiTextureType_METALNESS, "texture_metalness", pScene);
+		std::vector<std::shared_ptr<Texture>> metalnessMaps = this->LoadMaterialTextures(material, aiTextureType_METALNESS, "texture_metalness", pScene);
 		textures.insert(textures.end(), metalnessMaps.begin(), metalnessMaps.end());
 		// roughness texture, assimp에서 shininess 타입으로 읽는다 흠
-		std::vector<Texture> roughnessMaps = this->LoadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", pScene);
+		std::vector<std::shared_ptr<Texture>> roughnessMaps = this->LoadMaterialTextures(material, aiTextureType_SHININESS, "texture_roughness", pScene);
 		textures.insert(textures.end(), roughnessMaps.begin(), roughnessMaps.end());
 
 		if(textures.size() == 0)
@@ -352,63 +357,90 @@ void Model::UpdateBoneMatrix()
 	m_pDeviceContext->UpdateSubresource(m_pBoneMatrixConstantBuffer, 0, nullptr, &BoneMatrixCB, 0, 0);
 }
 
-std::vector<Texture> Model::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName,
+std::vector<std::shared_ptr<Texture>> Model::LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName,
                                                  const aiScene* scene)
 {
-	std::vector<Texture> textures;
+	std::vector<std::shared_ptr<Texture>> textures;
 
 	for (UINT i = 0; i < material->GetTextureCount(type); ++i)
 	{
 		aiString str;
 		material->GetTexture(type, i, &str);
 
-		bool skip = false;
-		for (const auto& texture : m_loadedTextures)
+		std::string fileName = std::string(str.C_Str());
+		if (int at = fileName.find_last_of(".tga"))
 		{
-			if (std::strcmp(texture.Path.c_str(), str.C_Str()) == 0)
-			{
-				Texture temp = texture;
-				temp.Type = typeName;
-				temp.Source->AddRef();
-				textures.push_back(temp);
-				skip = true;
-				break;
-			}
+			fileName = fileName.substr(0, at - 2) + "png";
 		}
-		if (!skip)
+
+		const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.c_str());
+
+		if (std::string::npos != fileName.find_last_of("/\\"))
 		{
-			Texture texture;
-
-			std::string fileName = std::string(str.C_Str());
-			if(int at = fileName.find_last_of(".tga"))
-			{
-				fileName = fileName.substr(0, at-2) + "png";
-			}
-
-			const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.c_str());
-
-			if (std::string::npos != fileName.find_last_of("/\\"))
-			{
-				fileName = "../Textures/" + fileName.substr(fileName.find_last_of("/\\"));
-			}
-			else
-			{
-				fileName = "../Textures/" + fileName;
-			}
-			fileName = m_directory + '/' + fileName;
-			if (embeddedTexture)
-			{
-				bool result = SaveEmbeddedTexture(embeddedTexture, fileName);
-				assert(result);
-			}
-			std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
-			HR_T(CreateWICTextureFromFile(m_pDevice, m_pDeviceContext, fileNameWs.c_str(), nullptr, &texture.Source));
-
-			texture.Type = typeName;
-			texture.Path = str.C_Str();
-			textures.push_back(texture);
-			this->m_loadedTextures.push_back(texture);
+			fileName = "../Textures/" + fileName.substr(fileName.find_last_of("/\\"));
 		}
+		else
+		{
+			fileName = "../Textures/" + fileName;
+		}
+		fileName = m_directory + '/' + fileName;
+		if (embeddedTexture)
+		{
+			bool result = SaveEmbeddedTexture(embeddedTexture, fileName);
+			assert(result);
+		}
+		std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
+
+		std::shared_ptr<Texture> texture = ResourceManager::GetInstance()->CreateTexture(typeName, fileNameWs);
+		textures.push_back(texture);
+
+		//bool skip = false;
+		//for (const auto& texture : m_loadedTextures)
+		//{
+		//	if (std::strcmp(texture.Path.c_str(), str.C_Str()) == 0)
+		//		
+		//	{
+		//		Texture temp = texture;
+		//		temp.Type = typeName;
+		//		temp.Source->AddRef();
+		//		textures.push_back(temp);
+		//		skip = true;
+		//		break;
+		//	}
+		//}
+		//if (!skip)
+		//{
+		//	Texture texture;
+
+		//	std::string fileName = std::string(str.C_Str());
+		//	if(int at = fileName.find_last_of(".tga"))
+		//	{
+		//		fileName = fileName.substr(0, at-2) + "png";
+		//	}
+
+		//	const aiTexture* embeddedTexture = scene->GetEmbeddedTexture(fileName.c_str());
+
+		//	if (std::string::npos != fileName.find_last_of("/\\"))
+		//	{
+		//		fileName = "../Textures/" + fileName.substr(fileName.find_last_of("/\\"));
+		//	}
+		//	else
+		//	{
+		//		fileName = "../Textures/" + fileName;
+		//	}
+		//	fileName = m_directory + '/' + fileName;
+		//	if (embeddedTexture)
+		//	{
+		//		bool result = SaveEmbeddedTexture(embeddedTexture, fileName);
+		//		assert(result);
+		//	}
+		//	std::wstring fileNameWs = std::wstring(fileName.begin(), fileName.end());
+		//	HR_T(CreateWICTextureFromFile(m_pDevice, m_pDeviceContext, fileNameWs.c_str(), nullptr, &texture.Source));
+		//	texture.Type = typeName;
+		//	texture.Path = str.C_Str();
+		//	textures.push_back(texture);
+		//	this->m_loadedTextures.push_back(texture);
+		//}
 	}
 
 	return textures;

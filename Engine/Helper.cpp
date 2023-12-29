@@ -43,7 +43,8 @@ HRESULT CompileShaderFromFile(const WCHAR* szFileName, LPCSTR szEntryPoint, LPCS
 	{
 		if(pErrorBlob)
 		{
-			MessageBoxA(NULL, (char*)pErrorBlob->GetBufferPointer(), "CompileShaderFromFile", MB_OK);
+			MessageBoxA(NULL, (char*)pErrorBlob->GetBufferPointer(), "
+				", MB_OK);
 			pErrorBlob->Release();
 		}
 		return hr;

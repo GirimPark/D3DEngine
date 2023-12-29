@@ -3,7 +3,9 @@
 #include "../Engine/CommonApp.h"
 
 #include <d3d11.h>
+#include <memory>
 #include <string>
+#include <vector>
 #include <directxtk/SimpleMath.h>
 
 class ModelLoader;
@@ -39,9 +41,11 @@ public:
 	ID3D11BlendState* m_pAlphaBlendState = nullptr;		// 블렌더 상태
 
 	// 모델 로더
-	Model* m_pModel = nullptr;
-	std::string m_modelPath = "../Resources/FBX/SkinningTest.fbx";
-	LPCSTR m_modelType = "VERTEX_SKINNINGx ";
+	std::vector<std::shared_ptr<Model>> m_models;
+
+	//Model* m_pModel = nullptr;
+	std::wstring m_modelPath = L"../Resources/FBX/zeldaPosed001.fbx";
+	LPCSTR m_modelType = "VERTEX_SKINNINGx";
 
 	// 상수 버퍼를 통해 전달할 변환 정보
 	// 위치 상수 버퍼
@@ -81,6 +85,9 @@ private:
 
 	bool InitializeImGUI();
 	void FinalizeImGUI();
+
+	void IncreaseModel();
+	void DecreaseModel();
 
 	LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) override;
 };

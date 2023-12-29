@@ -4,7 +4,7 @@
 using namespace DirectX;
 
 Mesh::Mesh(ID3D11Device* device, const std::vector<Vertex>& vertices, const std::vector<UINT>& indices,
-	const std::vector<Texture>& textures, SimpleMath::Vector4 baseColor)
+	std::vector<std::shared_ptr<Texture>> textures, SimpleMath::Vector4 baseColor)
 		: m_pDevice(device)
 		, m_vertices(vertices)
 		, m_indices(indices)
@@ -41,39 +41,39 @@ void Mesh::Render(ID3D11DeviceContext* devcon)
 
 	for (const auto& texture : m_textures)
 	{
-		if (texture.Type == "texture_diffuse")
+		if (texture->Type == "texture_diffuse")
 		{
-			devcon->PSSetShaderResources(0, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(0, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseDiffuse = true;
 		}
-		if (texture.Type == "texture_normal")
+		if (texture->Type == "texture_normal")
 		{
-			devcon->PSSetShaderResources(1, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(1, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseNormal = true;
 		}
-		if (texture.Type == "texture_specular")
+		if (texture->Type == "texture_specular")
 		{
-			devcon->PSSetShaderResources(2, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(2, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseSpecular = true;
 		}
-		if (texture.Type == "texture_emissive")
+		if (texture->Type == "texture_emissive")
 		{
-			devcon->PSSetShaderResources(3, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(3, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseEmissive = true;
 		}
-		if (texture.Type == "texture_opacity")
+		if (texture->Type == "texture_opacity")
 		{
-			devcon->PSSetShaderResources(4, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(4, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseOpacity = true;
 		}
-		if (texture.Type == "texture_metalness")
+		if (texture->Type == "texture_metalness")
 		{
-			devcon->PSSetShaderResources(5, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(5, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseMetalness = true;
 		}
-		if (texture.Type == "texture_roughness")
+		if (texture->Type == "texture_roughness")
 		{
-			devcon->PSSetShaderResources(6, 1, texture.Source.GetAddressOf());
+			devcon->PSSetShaderResources(6, 1, texture->Source.GetAddressOf());
 			TextureMapCB.UseRoughness = true;
 		}
 	}

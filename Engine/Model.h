@@ -6,6 +6,7 @@
 #include <assimp/scene.h>
 #include <vector>
 #include <map>
+#include <memory>
 
 #include "Animation.h"
 
@@ -43,9 +44,7 @@ private:
 	ID3D11DeviceContext* m_pDeviceContext = nullptr;
 	HWND m_HWND;
 	std::string m_directory;
-	std::string m_fileName;
-
-	std::vector<Texture> m_loadedTextures;
+	std::string m_filePath;
 
 	bool m_bBone;
 	std::vector<Bone> m_bones;
@@ -56,10 +55,11 @@ private:
 	ID3D11Buffer* m_pBoneMatrixConstantBuffer = nullptr;
 
 public:
-	Model(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon, std::string fileName);
+	Model(std::string filepath);
 	~Model();
 
 	void Load();
+	void Initialize(HWND hwnd, ID3D11Device* pDevice, ID3D11DeviceContext* pDevcon);
 	void Update(float deltaTime);
 	void Render(ID3D11DeviceContext* devcon);
 
@@ -83,7 +83,7 @@ private:
 	void AssignBone(Node* node);
 	void UpdateBoneMatrix();
 
-	std::vector<Texture> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName, const aiScene* scene);
+	std::vector<std::shared_ptr<Texture>> LoadMaterialTextures(aiMaterial* material, aiTextureType type, std::string typeName, const aiScene* scene);
 	ID3D11ShaderResourceView* LoadEmbeddedTexture(const aiTexture* embeddedTexture);
 	bool SaveEmbeddedTexture(const aiTexture* embeddedTexture, std::string fileName);
 };
